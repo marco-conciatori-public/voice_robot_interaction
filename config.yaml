@@ -10,3 +10,7 @@ prompt_template: You are an AI that pilots a real robot with four wheels and one
 tts_model_name: gemini-2.5-flash-preview-tts
 tts_voice_name: kore
 save_audio_file: False
+
+# ReSpeaker 4-Mic Array v2.0 identification numbers
+vendor_id: 0x2886
+product_id: 0x0018
