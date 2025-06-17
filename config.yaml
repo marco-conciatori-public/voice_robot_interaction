@@ -1,3 +1,4 @@
+verbose: 2
 api_key_file_path: gemini_api_key.txt
 
 # reasoning on input parameters
