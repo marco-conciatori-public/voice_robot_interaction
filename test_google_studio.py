@@ -8,13 +8,13 @@ import function_declarations
 import global_constants as gc
 
 
-def get_llm_response(model_name: str, input, config=None) -> tuple:
+def get_llm_response(model_name: str, model_input, config=None) -> tuple:
     """
     Sends a text prompt to the Google AI Studio LLM and returns the response.
 
     Args:
         model_name: str: The model to use for generating the response.
-        input: The prompt to send to the LLM, can be text, audio or images.
+        model_input: The prompt to send to the LLM, can be text, audio or images.
         config (types.GenerateContentConfig): Configuration for the content generation, including tools.
 
     Returns:
@@ -25,17 +25,17 @@ def get_llm_response(model_name: str, input, config=None) -> tuple:
     """
     try:
         # Send the prompt to the model and get the response.
-        if isinstance(input, str):
-            print(f'Sending prompt to LLM: "{input}"...')
+        if isinstance(model_input, str):
+            print(f'Sending prompt to LLM: "{model_input}"...')
         if config is None:
             response = client.models.generate_content(
                 model=model_name,
-                contents=input,
+                contents=model_input,
             )
         else:
             response = client.models.generate_content(
                 model=model_name,
-                contents=input,
+                contents=model_input,
                 config=config,
             )
 
@@ -69,10 +69,10 @@ if __name__ == '__main__':
 
     # # Define your text prompt
     # text_input = 'What is the capital of France?'
-    # response = get_llm_response(model_name=model_name, input=text_input)
+    # response = get_llm_response(model_name=model_name, model_input=text_input)
     #
     # text_input = 'Move the robot forward with medium speed.'
-    # response = get_llm_response(model_name=model_name, input=text_input, config=config)
+    # response = get_llm_response(model_name=model_name, model_input=text_input, config=config)
 
     print('=======================================================================================')
 
@@ -86,7 +86,7 @@ if __name__ == '__main__':
         'respond with text of call a function as appropriate',
         types.Part.from_bytes(data=audio_bytes, mime_type='audio/mp3')
     ]
-    is_function_call, response = get_llm_response(model_name=model_name, input=audio_input, config=config)
+    is_function_call, response = get_llm_response(model_name=model_name, model_input=audio_input, config=config)
     if not is_function_call:
         audio_data = google_ai_studio_tts.text_to_speech(
             text_input=response,
@@ -108,7 +108,7 @@ if __name__ == '__main__':
         'respond with text of call a function as appropriate',
         types.Part.from_bytes(data=audio_bytes, mime_type='audio/mp3')
     ]
-    is_function_call, response = get_llm_response(model_name=model_name, input=audio_input, config=config)
+    is_function_call, response = get_llm_response(model_name=model_name, model_input=audio_input, config=config)
     if not is_function_call:
         audio_data = google_ai_studio_tts.text_to_speech(
             text_input=response,
