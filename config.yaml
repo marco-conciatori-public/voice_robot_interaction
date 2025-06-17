@@ -5,5 +5,5 @@ brain_model_name: gemini-2.0-flash
 
 # text-to-speech conversion parameters
 tts_model_name: gemini-2.5-flash-preview-tts
-tts_voice_name: Kore,
+tts_voice_name: kore
 save_audio_file: false
