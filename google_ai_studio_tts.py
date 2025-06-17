@@ -6,8 +6,8 @@ import global_constants as gc
 
 
 # Set up the wave file to save the output:
-def wave_file(filename, pcm, channels=1, rate=24000, sample_width=2):
-    with wave.open(filename, mode='wb') as wf:
+def wave_file(file_path: str, pcm, channels=1, rate=24000, sample_width=2):
+    with wave.open(file_path, mode='wb') as wf:
         wf.setnchannels(channels)
         wf.setsampwidth(sample_width)
         wf.setframerate(rate)
@@ -46,3 +46,5 @@ def text_to_speech(text_input: str,
         file_path = gc.DATA_FOLDER_PATH + file_name
         print(f'Saving audio to {file_path}')
         wave_file(file_path, data)  # Saves the file
+
+    return data
