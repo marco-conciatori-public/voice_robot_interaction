@@ -17,7 +17,7 @@ def wave_file(file_path: str, pcm, channels=1, rate=24000, sample_width=2):
 def text_to_speech(text_input: str,
                    client: genai.Client,
                    model_name: str = 'gemini-2.5-flash-preview-tts',
-                   voice_name: str = 'Kore',
+                   voice_name: str = 'kore',
                    save_file: bool = False
                    ):
     """
