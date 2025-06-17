@@ -32,3 +32,16 @@ def play_audio(audio_data, sample_rate=24000) -> None:
     # Play the audio
     sd.play(audio_array, samplerate=sample_rate)
     sd.wait()  # Wait until the audio is finished playing
+
+
+def pretty_print_dict(data, _level: int = 0) -> None:
+    if isinstance(data, dict):
+        if _level > 0:
+            print()
+        for key in data:
+            for i in range(_level + 1):
+                print('\t', end='')
+            print(f'{key}: ', end='')
+            pretty_print_dict(data[key], _level=_level + 1)
+    else:
+        print(data)
