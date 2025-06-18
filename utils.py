@@ -32,6 +32,7 @@ def play_audio(audio_data, sample_rate=24000) -> None:
     # Play the audio
     sd.play(audio_array, samplerate=sample_rate)
     sd.wait()  # Wait until the audio is finished playing
+import wave
 
 
 def pretty_print_dict(data, _level: int = 0) -> None:
@@ -45,3 +46,12 @@ def pretty_print_dict(data, _level: int = 0) -> None:
             pretty_print_dict(data[key], _level=_level + 1)
     else:
         print(data)
+
+
+def save_wave_file(file_path: str, byte_data, channels=1, rate=24000, sample_width=2):
+    # Set up the wave file to save the output:
+    with wave.open(file_path, mode='wb') as wf:
+        wf.setnchannels(channels)
+        wf.setsampwidth(sample_width)
+        wf.setframerate(rate)
+        wf.writeframes(byte_data)

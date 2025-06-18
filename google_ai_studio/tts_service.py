@@ -1,17 +1,8 @@
-import wave
 from google import genai
 from google.genai import types
 
+import utils
 import global_constants as gc
-
-
-def wave_file(file_path: str, byte_data, channels=1, rate=24000, sample_width=2):
-    # Set up the wave file to save the output:
-    with wave.open(file_path, mode='wb') as wf:
-        wf.setnchannels(channels)
-        wf.setsampwidth(sample_width)
-        wf.setframerate(rate)
-        wf.writeframes(byte_data)
 
 
 def text_to_speech(text_input: str,
@@ -41,6 +32,6 @@ def text_to_speech(text_input: str,
         file_name = f'{gc.DATA_FOLDER_PATH}{text_input[:10].replace(" ", "_")}.wav'
         file_path = gc.DATA_FOLDER_PATH + file_name
         print(f'Saving audio to {file_path}')
-        wave_file(file_path, data)  # Saves the file
+        utils.save_wave_file(file_path, data)  # Saves the file
 
     return data
