@@ -7,8 +7,20 @@ import utils
 
 def import_args(yaml_path: str, read_from_command_line: bool = False, **kwargs) -> dict:
     # read data from yaml config file
-    with open(yaml_path) as f:
-        data_dict = yaml.safe_load(f)
+    # if the file is not found, it will try to go up one level and look for the file again (up to max_iterations times)
+
+    max_iterations = 5
+    level_up = 0
+    data_dict = None
+    while data_dict is None:
+        try:
+            with open(yaml_path) as f:
+                data_dict = yaml.safe_load(f)
+        except FileNotFoundError:
+            if level_up == max_iterations:
+                raise
+            level_up += 1
+            yaml_path = '../' + yaml_path
 
     if read_from_command_line:
         # command line arguments have priority over yaml arguments
