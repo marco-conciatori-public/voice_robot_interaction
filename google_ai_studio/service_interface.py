@@ -19,7 +19,7 @@ class GoogleAIStudioService:
     """
 
     def __init__(self, shared_variable_manager, verbose: int = 0):
-        parameters = args.import_args(yaml_path=gc.CONFIG_FOLDER_PATH + 'service_interface.yaml')
+        parameters = args.import_args(yaml_path=gc.CONFIG_FOLDER_PATH + 'service_interface.yaml', verbose=verbose)
         self.verbose = verbose
         self.shared_variable_manager = shared_variable_manager
         self.client = genai.Client(api_key=utils.get_api_key(file_path=parameters['api_key_file_path']))
