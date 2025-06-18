@@ -2,15 +2,22 @@ from google import genai
 from google.genai import types
 
 
-def get_llm_response(model_name: str, model_input, client: genai.Client, config=None) -> tuple:
+def reasoning(model_name: str,
+              audio_bytes,
+              prompt_template: str,
+              client: genai.Client,
+              config=None,
+              mime_type='audio/wav') -> tuple:
     """
     Sends a text prompt to the Google AI Studio LLM and returns the response.
 
     Args:
         model_name: str: The model to use for generating the response.
-        model_input: The prompt to send to the LLM, can be text, audio or images.
+        audio_bytes: The prompt to send to the LLM (audio).
+        prompt_template: str: The template for the prompt, which can include instructions or context.
         client: genai.Client: The Google AI Studio client to use for generating the response.
         config (types.GenerateContentConfig): Configuration for the content generation, including tools.
+        mime_type (str): The MIME type of the audio data, default is 'audio/wav'.
 
     Returns:
         tuple: A tuple containing:
@@ -19,18 +26,20 @@ def get_llm_response(model_name: str, model_input, client: genai.Client, config=
              error message if an exception occurs.
     """
     try:
-        # Send the prompt to the model and get the response.
-        if isinstance(model_input, str):
-            print(f'Sending prompt to LLM: "{model_input}"...')
+        audio_input = [
+            prompt_template,
+            # TODO: check mime type
+            types.Part.from_bytes(data=audio_bytes, mime_type=mime_type)
+        ]
         if config is None:
             response = client.models.generate_content(
                 model=model_name,
-                contents=model_input,
+                contents=audio_input,
             )
         else:
             response = client.models.generate_content(
                 model=model_name,
-                contents=model_input,
+                contents=audio_input,
                 config=config,
             )
 
@@ -38,13 +47,13 @@ def get_llm_response(model_name: str, model_input, client: genai.Client, config=
         # returns a tuple (is_function_call, response)
         if response.candidates[0].content.parts[0].function_call:
             function_call = response.candidates[0].content.parts[0].function_call
-            print('Function call detected in the response.')
-            print(f'Function to call: {function_call.name}')
-            print(f'Arguments: {function_call.args}')
+            # print('Function call detected in the response.')
+            # print(f'Function to call: {function_call.name}')
+            # print(f'Arguments: {function_call.args}')
             return True, function_call
         else:
-            print('No function call detected in the response.')
-            print(f'Response: {response.candidates[0].content.parts[0].text}')
+            # print('No function call detected in the response.')
+            # print(f'Response: {response.candidates[0].content.parts[0].text}')
             return False, response.text
 
     except Exception as e:

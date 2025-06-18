@@ -1,0 +1,4 @@
+ReSpeaker Mic Array v2.0
+
+get the device index number of Mic Array:
+    execute the script get_index.py

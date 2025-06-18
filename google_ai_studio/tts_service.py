@@ -5,13 +5,13 @@ from google.genai import types
 import global_constants as gc
 
 
-# Set up the wave file to save the output:
-def wave_file(file_path: str, pcm, channels=1, rate=24000, sample_width=2):
+def wave_file(file_path: str, byte_data, channels=1, rate=24000, sample_width=2):
+    # Set up the wave file to save the output:
     with wave.open(file_path, mode='wb') as wf:
         wf.setnchannels(channels)
         wf.setsampwidth(sample_width)
         wf.setframerate(rate)
-        wf.writeframes(pcm)
+        wf.writeframes(byte_data)
 
 
 def text_to_speech(text_input: str,
@@ -30,11 +30,7 @@ def text_to_speech(text_input: str,
         config=types.GenerateContentConfig(
             response_modalities=['AUDIO'],
             speech_config=types.SpeechConfig(
-                voice_config=types.VoiceConfig(
-                    prebuilt_voice_config=types.PrebuiltVoiceConfig(
-                        voice_name=voice_name,
-                    )
-                )
+                voice_config=types.VoiceConfig(prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name=voice_name))
             ),
         )
     )

@@ -1,0 +1,16 @@
+verbose: 0
+# api key for google ai studio
+api_key_file_path: google_ai_studio/gemini_api_key.txt
+
+# parameters for reasoning (reasoning_service)
+reasoning_parameters:
+  model_name: gemini-2.0-flash
+  prompt_template: You are an AI that pilots a real robot with four wheels and one arm. Depending on user's requests
+    you should respond with natural language or a function call as appropriate.
+  mime_type: audio/wav
+
+# parameters for text-to-speech (tts_service)
+tts_parameters:
+  model_name: gemini-2.5-flash-preview-tts
+  voice_name: kore
+  save_file: False

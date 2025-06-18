@@ -1,0 +1,5 @@
+verbose: 0
+
+# ReSpeaker 4-Mic Array v2.0 identification numbers
+vendor_id: 0x2886
+product_id: 0x0018
