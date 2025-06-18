@@ -75,8 +75,8 @@ class MicrophoneListener:
         self.is_recording = True
 
         self.current_recording = []
-        stream = self.pa.open(
-            format=pyaudio.paInt16,
+        self.audio_stream = self.pa.open(
+            format=self.pa.get_format_from_width(2),
             channels=1,
             rate=16000,
             input=True,
