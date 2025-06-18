@@ -5,6 +5,7 @@ import pyaudio
 import args
 import tuning
 import global_constants as gc
+import utils
 
 
 class MicrophoneListener:
@@ -95,6 +96,13 @@ class MicrophoneListener:
         self.audio_stream = None
 
         audio_data = b''.join(self.current_recording)
+        utils.save_wave_file(
+            file_path=f'{gc.DATA_FOLDER_PATH}recording_{int(time.time())}.wav',
+            byte_data=audio_data,
+            channels=1,
+            rate=16000,
+            sample_width=2
+        )
         self.completed_recordings.append(audio_data)
 
         self.current_recording = []
@@ -102,3 +110,9 @@ class MicrophoneListener:
 
         if self.verbose >= 2:
             print('No voice detected for a while, stopping recording...')
+
+
+if __name__ == '__main__':
+
+    mic_listener = MicrophoneListener(verbose=3)
+    mic_listener.listen()
