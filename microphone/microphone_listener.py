@@ -9,6 +9,10 @@ import utils
 
 
 class MicrophoneListener:
+    RATE = 16000
+    CHUNK_SIZE = 1024
+    CHANNELS = 1
+    WIDTH = 2
     def __init__(self, **kwargs):
         """
         Initializes the MicrophoneListener with the specified product and vendor IDs.
@@ -59,7 +63,7 @@ class MicrophoneListener:
                 if not self.is_recording:
                     self.start_recording()
                 else:
-                    self.current_recording.append(self.audio_stream.read(1024))
+                    self.current_recording.append(self.audio_stream.read(MicrophoneListener.CHUNK_SIZE))
             else:
                 if self.is_recording:
                     if self.silence_timestamp is None:
@@ -77,12 +81,12 @@ class MicrophoneListener:
 
         self.current_recording = []
         self.audio_stream = self.pa.open(
-            format=self.pa.get_format_from_width(2),
-            channels=1,
-            rate=16000,
+            format=self.pa.get_format_from_width(MicrophoneListener.WIDTH),
+            channels=MicrophoneListener.CHANNELS,
+            rate=MicrophoneListener.RATE,
             input=True,
             input_device_index=self.index,
-            frames_per_buffer=1024
+            frames_per_buffer=MicrophoneListener.CHUNK_SIZE,
         )
         if self.verbose >= 2:
             print('Voice detected, starting recording...')
@@ -99,9 +103,9 @@ class MicrophoneListener:
         utils.save_wave_file(
             file_path=f'{gc.DATA_FOLDER_PATH}recording_{int(time.time())}.wav',
             byte_data=audio_data,
-            channels=1,
-            rate=16000,
-            sample_width=2
+            channels=MicrophoneListener.CHANNELS,
+            rate=MicrophoneListener.RATE,
+            sample_width=MicrophoneListener.WIDTH,
         )
         self.completed_recordings.append(audio_data)
 
