@@ -1,50 +1,104 @@
 import time
-import copy
 
+import pyaudio
+
+import args
 import tuning
+import global_constants as gc
 
 
 class MicrophoneListener:
-    def __init__(self, product_id, vendor_id, verbose: int, max_silence_duration: float = 2):
-        self.verbose = verbose
-        self.vendor_id = vendor_id
-        self.product_id = product_id
+    def __init__(self, **kwargs):
+        """
+        Initializes the MicrophoneListener with the specified product and vendor IDs.
+        :param product_id: value needed to identify the microphone device.
+        :param vendor_id: value needed to identify the microphone device.
+        :param max_silence_duration: maximum duration in seconds after which a recording is
+         stopped if no voice is detected.
+        :param verbose: verbosity level for logging.
+        """
+        parameters = args.import_args(yaml_path=gc.CONFIG_FOLDER_PATH + 'microphone_listener.yaml', **kwargs)
+        self.verbose = parameters['verbose']
+        self.index = parameters['index']
+        self.vendor_id = parameters['vendor_id']
+        self.product_id = parameters['product_id']
         self.microphone = None
-        self.microphone = tuning.find(vid=vendor_id, pid=product_id)
+        self.microphone = tuning.find(vid=self.vendor_id, pid=self.product_id)
         if self.microphone:
             if self.verbose >= 1:
                 print('Microphone initialized successfully.')
         else:
-            raise RuntimeError(f'Failed to initialize microphone with VID: {vendor_id}, PID: {product_id}')
+            raise RuntimeError(f'Failed to initialize microphone with VID: {self.vendor_id}, PID: {self.product_id}')
         self.current_recording = None
         self.completed_recordings = []
-        self.silence_duration = 0
+        self.silence_timestamp = None
         # duration in seconds after which a recording is stopped if no voice is detected
-        self.max_silence_duration = max_silence_duration
+        self.max_silence_duration = parameters['max_silence_duration']
         self.current_timestamp = None
+        self.pa = pyaudio.PyAudio()
+        self.is_recording = False
+        self.audio_stream = None
 
     def listen(self):
-        if self.current_timestamp is None:
-            self.current_timestamp = time.time()
-        if not self.microphone.is_voice():
-            if self.current_recording is None:
-                time.sleep(0.1)  # Sleep to avoid busy waiting
-            else:
-                new_timestamp = time.time()
-                self.silence_duration += (new_timestamp - self.current_timestamp)
-                self.current_timestamp = new_timestamp
-                if self.silence_duration >= self.max_silence_duration:
-                    if self.verbose >= 2:
-                        print('Stopping recording due to silence.')
-                    self.completed_recordings.append(copy.deepcopy(self.current_recording))
-                    self.current_recording = None
-                    self.silence_duration = 0
-        else:
-            if self.current_recording is None:
-                if self.verbose >= 2:
-                    print('Starting new recording.')
-                self.current_recording = []
-                self.silence_duration = 0
-            self.current_recording.append(self.microphone.read())
-            self.current_timestamp = time.time()
+        """
+        Listening to the microphone
+        If a voice is detected using self.microphone.is_voice():
+            - start recording using the pyaudio library
+        If no voice is detected for self.max_silence_duration seconds:
+            - stop recording
+            - save the audio data
+            - resume listening
+        """
+        if self.verbose >= 1:
+            print('Starting to listen to the microphone...')
 
+        while True:
+            if self.microphone.is_voice():
+                self.silence_timestamp = None
+                if not self.is_recording:
+                    self.start_recording()
+                else:
+                    self.current_recording.append(self.audio_stream.read(1024))
+            else:
+                if self.is_recording:
+                    if self.silence_timestamp is None:
+                        self.silence_timestamp = time.time()
+                    if (time.time() - self.silence_timestamp) >= self.max_silence_duration:
+                        self.stop_recording()
+                else:
+                    time.sleep(0.05)
+
+    def start_recording(self):
+        """
+        Starts recording audio from the microphone.
+        """
+        self.is_recording = True
+
+        self.current_recording = []
+        stream = self.pa.open(
+            format=pyaudio.paInt16,
+            channels=1,
+            rate=16000,
+            input=True,
+            input_device_index=self.index,
+            frames_per_buffer=1024
+        )
+        if self.verbose >= 2:
+            print('Voice detected, starting recording...')
+
+    def stop_recording(self):
+        """
+        Stops the current recording and saves the audio data.
+        """
+        self.audio_stream.stop_stream()
+        self.audio_stream.close()
+        self.audio_stream = None
+
+        audio_data = b''.join(self.current_recording)
+        self.completed_recordings.append(audio_data)
+
+        self.current_recording = []
+        self.is_recording = False
+
+        if self.verbose >= 2:
+            print('No voice detected for a while, stopping recording...')
