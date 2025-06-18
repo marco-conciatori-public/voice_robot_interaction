@@ -13,6 +13,7 @@ class MicrophoneListener:
     CHUNK_SIZE = 1024
     CHANNELS = 1
     WIDTH = 2
+
     def __init__(self, **kwargs):
         """
         Initializes the MicrophoneListener with the specified product and vendor IDs.
