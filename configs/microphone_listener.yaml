@@ -2,7 +2,7 @@ verbose: 0
 
 # run get_index.py to get index
 # TODO: can be automated?
-index: 11
+device_index: 11
 
 # ReSpeaker 4-Mic Array v2.0 identification numbers
 vendor_id: 0x2886
@@ -10,3 +10,14 @@ product_id: 0x0018
 
 # if a voice was detected and a recording started, if no voice is detected for this duration, the recording will stop
 max_silence_duration: 2
+
+# audio stream configuration
+stream_params:
+  # audio sample rate in Hz
+  sample_rate: 16000
+  # chunk size in samples
+  chunk_size: 1024
+  # number of channels
+  channels: 1
+  # width of each sample in bytes
+  width: 2

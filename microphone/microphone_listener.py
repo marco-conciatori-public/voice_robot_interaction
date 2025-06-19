@@ -8,11 +8,6 @@ import global_constants as gc
 
 
 class MicrophoneListener:
-    RATE = 16000
-    CHUNK_SIZE = 1024
-    CHANNELS = 1
-    WIDTH = 2
-
     def __init__(self, **kwargs):
         """
         Initializes the MicrophoneListener with the specified product and vendor IDs.
@@ -24,7 +19,7 @@ class MicrophoneListener:
         """
         parameters = args.import_args(yaml_path=gc.CONFIG_FOLDER_PATH + 'microphone_listener.yaml', **kwargs)
         self.verbose = parameters['verbose']
-        self.index = parameters['index']
+        self.device_index = parameters['device_index']
         self.vendor_id = parameters['vendor_id']
         self.product_id = parameters['product_id']
         self.microphone = None
@@ -41,6 +36,7 @@ class MicrophoneListener:
         self.pa = pyaudio.PyAudio()
         self.is_recording = False
         self.audio_stream = None
+        self.stream_params = parameters['stream_params']
 
     def listen(self):
         """
@@ -61,7 +57,7 @@ class MicrophoneListener:
                 if not self.is_recording:
                     self.start_recording()
                 else:
-                    self.current_recording.append(self.audio_stream.read(MicrophoneListener.CHUNK_SIZE))
+                    self.current_recording.append(self.audio_stream.read(self.stream_params['chunk_size']))
             else:
                 if self.is_recording:
                     if self.silence_timestamp is None:
@@ -79,12 +75,12 @@ class MicrophoneListener:
 
         self.current_recording = []
         self.audio_stream = self.pa.open(
-            format=self.pa.get_format_from_width(MicrophoneListener.WIDTH),
-            channels=MicrophoneListener.CHANNELS,
-            rate=MicrophoneListener.RATE,
+            format=self.pa.get_format_from_width(self.stream_params['width']),
+            channels=self.stream_params['channels'],
+            rate=self.stream_params['rate'],
             input=True,
-            input_device_index=self.index,
-            frames_per_buffer=MicrophoneListener.CHUNK_SIZE,
+            input_device_index=self.device_index,
+            frames_per_buffer=self.stream_params['chunk_size'],
         )
         if self.verbose >= 2:
             print('Voice detected, starting recording...')
@@ -97,6 +93,7 @@ class MicrophoneListener:
         self.audio_stream.close()
         self.audio_stream = None
 
+        # utils.save_wave_file(
         #     file_path=f'{gc.DATA_FOLDER_PATH}recording_{int(time.time())}.wav',
         #     byte_data=b''.join(self.current_recording),
         #     channels=MicrophoneListener.CHANNELS,
