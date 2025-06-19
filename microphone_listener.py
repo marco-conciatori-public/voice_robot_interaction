@@ -1,4 +1,5 @@
 import time
+from pathlib import Path
 
 import pyaudio
 
@@ -101,8 +102,9 @@ class MicrophoneListener:
         self.audio_stream = None
 
         audio_data = b''.join(self.current_recording)
+        Path(gc.OUTPUT_FOLDER_PATH).parent.mkdir(parents=True, exist_ok=True)
         utils.save_wave_file(
-            file_path=f'{gc.DATA_FOLDER_PATH}recording_{int(time.time())}.wav',
+            file_path=f'{gc.OUTPUT_FOLDER_PATH}recording_{int(time.time())}.wav',
             byte_data=audio_data,
             channels=MicrophoneListener.CHANNELS,
             rate=MicrophoneListener.RATE,
