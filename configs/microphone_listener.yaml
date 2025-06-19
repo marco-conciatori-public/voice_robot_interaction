@@ -2,7 +2,7 @@ verbose: 0
 
 # run get_index.py to get index
 # TODO: can be automated?
-index: 2
+index: 11
 
 # ReSpeaker 4-Mic Array v2.0 identification numbers
 vendor_id: 0x2886
