@@ -3,9 +3,9 @@ import time
 import pyaudio
 
 import args
+import utils
 import tuning
 import global_constants as gc
-import utils
 
 
 class MicrophoneListener:
