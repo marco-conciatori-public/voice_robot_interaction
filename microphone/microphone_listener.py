@@ -3,7 +3,6 @@ import time
 import pyaudio
 
 import args
-import utils
 import tuning
 import global_constants as gc
 
@@ -36,11 +35,9 @@ class MicrophoneListener:
         else:
             raise RuntimeError(f'Failed to initialize microphone with VID: {self.vendor_id}, PID: {self.product_id}')
         self.current_recording = None
-        self.completed_recordings = []
         self.silence_timestamp = None
         # duration in seconds after which a recording is stopped if no voice is detected
         self.max_silence_duration = parameters['max_silence_duration']
-        self.current_timestamp = None
         self.pa = pyaudio.PyAudio()
         self.is_recording = False
         self.audio_stream = None
@@ -100,24 +97,15 @@ class MicrophoneListener:
         self.audio_stream.close()
         self.audio_stream = None
 
-        audio_data = b''.join(self.current_recording)
-        utils.save_wave_file(
-            file_path=f'{gc.DATA_FOLDER_PATH}recording_{int(time.time())}.wav',
-            byte_data=audio_data,
-            channels=MicrophoneListener.CHANNELS,
-            rate=MicrophoneListener.RATE,
-            sample_width=MicrophoneListener.WIDTH,
-        )
-        self.completed_recordings.append(audio_data)
+        #     file_path=f'{gc.DATA_FOLDER_PATH}recording_{int(time.time())}.wav',
+        #     byte_data=b''.join(self.current_recording),
+        #     channels=MicrophoneListener.CHANNELS,
+        #     rate=MicrophoneListener.RATE,
+        #     sample_width=MicrophoneListener.WIDTH,
+        # )
 
         self.current_recording = []
         self.is_recording = False
 
         if self.verbose >= 2:
             print('No voice detected for a while, stopping recording...')
-
-
-if __name__ == '__main__':
-
-    mic_listener = MicrophoneListener(verbose=3)
-    mic_listener.listen()
