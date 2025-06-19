@@ -8,7 +8,7 @@ import global_constants as gc
 
 
 class MicrophoneListener:
-    def __init__(self, **kwargs):
+    def __init__(self, shared_variable_manager, **kwargs):
         """
         Initializes the MicrophoneListener with the specified product and vendor IDs.
         :param product_id: value needed to identify the microphone device.
@@ -19,6 +19,7 @@ class MicrophoneListener:
         """
         parameters = args.import_args(yaml_path=gc.CONFIG_FOLDER_PATH + 'microphone_listener.yaml', **kwargs)
         self.verbose = parameters['verbose']
+        self.shared_variable_manager = shared_variable_manager
         self.device_index = parameters['device_index']
         self.vendor_id = parameters['vendor_id']
         self.product_id = parameters['product_id']
@@ -100,6 +101,7 @@ class MicrophoneListener:
         #     rate=MicrophoneListener.RATE,
         #     sample_width=MicrophoneListener.WIDTH,
         # )
+        self.shared_variable_manager.add_reasoning_request({'audio_bytes': b''.join(self.current_recording)})
 
         self.current_recording = []
         self.is_recording = False
