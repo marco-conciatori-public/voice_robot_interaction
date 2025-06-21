@@ -56,7 +56,7 @@ def play_audio(audio_data, output_device_index: int, channels: int = 1, sample_r
 
     CHUNK = 1024
 
-    with wave.open(f=audio_data, mode='rb') as wf:
+    with wave.open(f=audio_data, mode='r') as wf:
         # Instantiate PyAudio and initialize PortAudio system resources (1)
         p = pyaudio.PyAudio()
 
