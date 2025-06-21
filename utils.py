@@ -1,7 +1,6 @@
 import wave
 import numpy as np
 import sounddevice as sd
-from contextlib import contextmanager
 
 
 def get_api_key(file_path: str) -> str:
@@ -21,42 +20,35 @@ def get_api_key(file_path: str) -> str:
         raise Exception(f'Error reading API key from file:\n{e}')
 
 
-def play_audio(audio_data, output_device_index: int = 1, sample_rate: int = 24000) -> None:
+def play_audio(audio_bytes: bytes, sample_rate: int, dtype: str, channels: int):
     """
-    Plays audio data using the specified sample rate.
-    :param audio_data: The audio data to be played, typically in bytes format.
-    :param output_device_index: The index of the output device to use for playback, default is 1.
-    :param sample_rate: The sample rate of the audio data, default is 24000 Hz.
+    Plays PCM audio data from a byte string using sounddevice.
+
+    Args:
+        audio_bytes: The raw audio data as a bytes object.
+        sample_rate: The sample rate of the audio (e.g., 24000 Hz).
+        dtype: The data type string (e.g., 'int16' for L16).
+        channels: The number of audio channels (e.g., 1 for mono).
     """
 
-    # Convert audio data to numpy array
-    audio_array = np.frombuffer(audio_data, dtype=np.int16)
+    try:
+        # Convert bytes to a numpy array of the specified data type
+        # We assume little-endian byte order based on common L16 implementations.
+        audio_array = np.frombuffer(audio_bytes, dtype=dtype)
 
-    # Play the audio
-    sd.play(audio_array, samplerate=sample_rate)
-    sd.wait()  # Wait until the audio is finished playing
+        # Reshape the array if it's stereo (though L16 is usually mono)
+        if channels > 1:
+            audio_array = audio_array.reshape(-1, channels)
 
-    # # Instantiate PyAudio and initialize PortAudio system resources (1)
-    # p = pyaudio.PyAudio()
-    #
-    # # Open stream (2)
-    # stream = p.open(
-    #     format=p.get_format_from_width(audio_data.getsampwidth()),
-    #     channels=audio_data.getnchannels(),
-    #     rate=audio_data.getframerate(),
-    #     output=True,
-    #     output_device_index=output_device_index
-    # )
-    #
-    # # Play samples from the wave file (3)
-    # while len(data := audio_data.readframes(CHUNK)):  # Requires Python 3.8+ for :=
-    #     stream.write(data)
-    #
-    # # Close stream (4)
-    # stream.close()
-    #
-    # # Release PortAudio system resources (5)
-    # p.terminate()
+        print(f"Playing audio (Sample Rate: {sample_rate} Hz, DType: {dtype}, Channels: {channels})...")
+        # Play the audio. The 'blocking=True' means the function waits until playback finishes.
+        sd.play(audio_array, samplerate=sample_rate, blocking=True)
+        print("Audio playback finished.")
+
+    except Exception as e:
+        print(f"An error occurred during audio playback: {e}")
+        print("Please ensure you have 'sounddevice' installed and working audio output.")
+        print("You might need to install 'PortAudio' development libraries if on Linux/macOS.")
 
 
 def pretty_print_dict(data, _level: int = 0) -> None:
@@ -70,17 +62,6 @@ def pretty_print_dict(data, _level: int = 0) -> None:
             pretty_print_dict(data[key], _level=_level + 1)
     else:
         print(data)
-
-
-@contextmanager
-def get_wave_file(file_path: str, byte_data, channels=1, rate=24000, sample_width=2):
-    # Set up the wave file to save the output:
-    with wave.open(file_path, mode='wb') as wf:
-        wf.setnchannels(channels)
-        wf.setsampwidth(sample_width)
-        wf.setframerate(rate)
-        # return wf
-        yield wf
 
 
 def save_wave_file(file_path: str, byte_data, channels=1, rate=24000, sample_width=2) -> None:
