@@ -31,12 +31,14 @@ def play_audio(audio_data, output_device_index: int, sample_rate: int = 24000) -
     pa = pyaudio.PyAudio()
 
     # Open a stream for playback
-    stream = pa.open(format=pyaudio.paInt16,
-                     channels=1,
-                     rate=sample_rate,
-                     output=True,
-                     output_device_index=output_device_index,
-                     )
+    stream = pa.open(
+        # format=pyaudio.paInt16,
+        format=pa.get_format_from_width(2),
+        channels=1,
+        rate=sample_rate,
+        output=True,
+        output_device_index=output_device_index,
+    )
 
     # Convert byte data to numpy array for playback
     audio_array = np.frombuffer(audio_data, dtype=np.int16)
