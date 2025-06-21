@@ -15,9 +15,12 @@ for file in Path(gc.DATA_FOLDER_PATH).glob('*.mp3'):
 # read command line arguments
 parser = argparse.ArgumentParser()
 parser.add_argument('-o', '--output_device_index', type=int, default=1,)
+parser.add_argument('-s', '--sample_rate', type=int, default=24000,)
 args = parser.parse_args()
 output_device_index = args.output_device_index
+sample_rate = args.sample_rate
 print(f'Output device index: {output_device_index}')
+print(f'Sample rate: {sample_rate}')
 
 # play all audio files
 counter = 0
@@ -26,7 +29,7 @@ for audio_data in file_audio_list:
     utils.play_audio(
         audio_data=audio_data,
         output_device_index=output_device_index,
-        sample_rate=16000
+        sample_rate=sample_rate
     )
     counter += 1
 
