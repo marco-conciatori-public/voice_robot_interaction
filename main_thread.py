@@ -42,6 +42,7 @@ def main_thread(**kwargs):
     while True:
         function_call = shared_variable_manager.pop_function_call_response()
         if function_call is not None:
+            print(f'function_call: {function_call}')
             if verbose >= 2:
                 print(f'Function call detected:\n\t{function_call.name}{function_call.args}')
             # TODO: Implement the function execution logic
