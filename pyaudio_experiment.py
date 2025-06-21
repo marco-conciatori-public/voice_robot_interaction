@@ -31,9 +31,9 @@ for audio_data in file_audio_list:
     print(f'Playing audio file {counter + 1}/{len(file_audio_list)}')
     utils.play_audio(
         audio_data=audio_data,
-        output_device_index=output_device_index,
-        sample_rate=sample_rate,
-        channels=channels,
+        # output_device_index=output_device_index,
+        # sample_rate=sample_rate,
+        # channels=channels,
     )
     counter += 1
 
