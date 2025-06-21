@@ -9,22 +9,30 @@ from thread_shared_variables import SharedVariableManager
 from microphone.microphone_listener import MicrophoneListener
 
 
-if __name__ == '__main__':
-    parameters = args.import_args(yaml_path=gc.CONFIG_FOLDER_PATH + 'main_thread.yaml')
+def main_thread(**kwargs):
+    """
+    Main thread function that initializes the Google AI Studio service interface and the microphone listener.
+    It continuously checks for function calls and audio responses, processing them as they come in.
+    """
+    parameters = args.import_args(yaml_path=gc.CONFIG_FOLDER_PATH + 'main_thread.yaml', **kwargs)
     verbose = parameters['verbose']
 
+    # Initialize the shared variable manager
     shared_variable_manager = SharedVariableManager(verbose=verbose)
+
     # Initialize the Google AI Studio service interface
     google_ai_studio_service = service_interface.GoogleAIStudioService(
         shared_variable_manager=shared_variable_manager,
         verbose=verbose,
     )
     google_ai_studio_service.start_services()
-    # Initialize the microphone listener
-    microphone_listener = MicrophoneListener(
-        shared_variable_manager=shared_variable_manager,
-        verbose=verbose,
-    )
+
+    # # Initialize the microphone listener
+    # microphone_listener = MicrophoneListener(
+    #     shared_variable_manager=shared_variable_manager,
+    #     verbose=verbose,
+    # )
+    # microphone_listener.start_listening()
 
     # add all mp3 files in the data folder
     for file in Path(gc.DATA_FOLDER_PATH).glob('*.mp3'):
@@ -46,3 +54,7 @@ if __name__ == '__main__':
 
         if function_call is None and audio_response is None:
             time.sleep(0.2)
+
+
+if __name__ == '__main__':
+    main_thread()
