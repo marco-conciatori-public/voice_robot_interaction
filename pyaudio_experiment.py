@@ -16,6 +16,7 @@ for file in Path(gc.DATA_FOLDER_PATH).glob('*.mp3'):
 parser = argparse.ArgumentParser()
 parser.add_argument('-o', '--output_device_index', type=int, default=1,)
 parser.add_argument('-s', '--sample_rate', type=int, default=24000,)
+parser.add_argument('-c', '--sample_rate', type=int, default=24000,)
 args = parser.parse_args()
 output_device_index = args.output_device_index
 sample_rate = args.sample_rate
