@@ -9,8 +9,8 @@ file_audio_list = []
 
 # add all mp3 files in the data folder
 for file in Path(gc.DATA_FOLDER_PATH).glob('*.mp3'):
-    with open(file, 'rb') as audio_file:
-        file_audio_list.append(audio_file.read())
+    with utils.get_wave_file(file) as wf:
+        file_audio_list.append(wf)
 
 # read command line arguments
 parser = argparse.ArgumentParser()
@@ -26,13 +26,13 @@ print(f'Sample rate: {sample_rate}')
 print(f'Channels: {channels}')
 
 # play all audio files
-counter = 0
-for audio_data in file_audio_list:
-    print(f'Playing audio file {counter + 1}/{len(file_audio_list)}')
+counter = 1
+for audio_file in file_audio_list:
+    print(f'Playing audio file {counter}/{len(file_audio_list)}')
     utils.play_audio(
-        audio_data=audio_data,
-        # output_device_index=output_device_index,
-        sample_rate=sample_rate,
+        audio_data=audio_file,
+        output_device_index=output_device_index,
+        # sample_rate=sample_rate,
         # channels=channels,
     )
     counter += 1

@@ -32,6 +32,7 @@ def text_to_speech(text_input: str,
         file_name = f'{gc.DATA_FOLDER_PATH}{text_input[:10].replace(" ", "_")}.wav'
         file_path = gc.DATA_FOLDER_PATH + file_name
         print(f'Saving audio to {file_path}')
-        utils.save_wave_file(file_path, data)  # Saves the file
+        utils.save_wave_file(file_path=file_path, byte_data=data)  # Saves the file
 
-    return data
+    with utils.get_wave_file(f'{text_input[:10].replace(" ", "_")}.wav') as wf:
+        return wf
