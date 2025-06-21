@@ -28,31 +28,60 @@ def play_audio(audio_data, output_device_index: int, channels: int = 1, sample_r
     :param channels: The number of audio channels, default is 1 (mono).
     :param sample_rate: The sample rate of the audio data, default is 24000 Hz.
     """
-    # Initialize PyAudio
-    pa = pyaudio.PyAudio()
+    # # Initialize PyAudio
+    # pa = pyaudio.PyAudio()
+    #
+    # # Open a stream for playback
+    # stream = pa.open(
+    #     format=pyaudio.paInt16,
+    #     # format=pa.get_format_from_width(2),
+    #     channels=channels,
+    #     rate=sample_rate,
+    #     output=True,
+    #     output_device_index=output_device_index,
+    # )
+    #
+    # # Convert byte data to numpy array for playback
+    # audio_array = np.frombuffer(audio_data, dtype=np.int16)
+    #
+    # # Play the audio data
+    # stream.write(audio_array.tobytes())
+    #
+    # # Stop and close the stream
+    # stream.stop_stream()
+    # stream.close()
+    #
+    # # Terminate PyAudio
+    # pa.terminate()
 
-    # Open a stream for playback
-    stream = pa.open(
-        # format=pyaudio.paInt16,
-        format=pa.get_format_from_width(2),
-        channels=channels,
-        rate=sample_rate,
-        output=True,
-        output_device_index=output_device_index,
-    )
+    CHUNK = 1024
 
-    # Convert byte data to numpy array for playback
-    audio_array = np.frombuffer(audio_data, dtype=np.int16)
+    with wave.open(f=audio_data, mode='rb') as wf:
+        # Instantiate PyAudio and initialize PortAudio system resources (1)
+        p = pyaudio.PyAudio()
 
-    # Play the audio data
-    stream.write(audio_array.tobytes())
+        print(f'format: {wf.getsampwidth()}')
+        print(f'format: {p.get_format_from_width(wf.getsampwidth())}')
+        print(f'channels: {wf.getnchannels()}')
+        print(f'rate: {wf.getframerate()}')
 
-    # Stop and close the stream
-    stream.stop_stream()
-    stream.close()
+        # Open stream (2)
+        stream = p.open(
+            format=p.get_format_from_width(wf.getsampwidth()),
+            channels=wf.getnchannels(),
+            rate=wf.getframerate(),
+            output=True,
+        )
 
-    # Terminate PyAudio
-    pa.terminate()
+        # Play samples from the wave file (3)
+        while len(data := wf.readframes(CHUNK)):  # Requires Python 3.8+ for :=
+            stream.write(data)
+
+        # Close stream (4)
+        stream.close()
+
+        # Release PortAudio system resources (5)
+        p.terminate()
 
 
 def pretty_print_dict(data, _level: int = 0) -> None:
