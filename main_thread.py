@@ -27,17 +27,17 @@ def main_thread(**kwargs):
     )
     google_ai_studio_service.start_services()
 
-    # # Initialize the microphone listener
-    # microphone_listener = MicrophoneListener(
-    #     shared_variable_manager=shared_variable_manager,
-    #     verbose=verbose,
-    # )
-    # microphone_listener.start_listening()
+    # Initialize the microphone listener
+    microphone_listener = MicrophoneListener(
+        shared_variable_manager=shared_variable_manager,
+        verbose=verbose,
+    )
+    microphone_listener.start_listening()
 
-    # add all mp3 files in the data folder
-    for file in Path(gc.DATA_FOLDER_PATH).glob('*.mp3'):
-        with open(file, 'rb') as audio_file:
-            shared_variable_manager.add_reasoning_request({'audio_bytes': audio_file.read()})
+    # # add all mp3 files in the data folder
+    # for file in Path(gc.DATA_FOLDER_PATH).glob('*.mp3'):
+    #     with open(file, 'rb') as audio_file:
+    #         shared_variable_manager.add_reasoning_request({'audio_bytes': audio_file.read()})
 
     while True:
         function_call = shared_variable_manager.pop_function_call_response()
