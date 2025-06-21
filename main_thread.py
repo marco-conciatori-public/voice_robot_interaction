@@ -49,7 +49,12 @@ def main_thread(**kwargs):
         if audio_response is not None:
             if verbose >= 2:
                 print(f'Audio response received.')
-            utils.play_audio(audio_data=audio_response, sample_rate=24000)
+            utils.play_audio(
+                audio_bytes=audio_response,
+                sample_rate=24000,
+                channels=1,
+                dtype='int16',
+            )
             # TODO: send to robot speaker
 
         if function_call is None and audio_response is None:

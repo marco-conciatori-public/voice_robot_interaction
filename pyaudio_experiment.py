@@ -8,7 +8,8 @@ import global_constants as gc
 file_audio_list = []
 
 # add all mp3 files in the data folder
-for file in Path(gc.DATA_FOLDER_PATH).glob('*.mp3'):
+for file in Path(gc.OUTPUT_FOLDER_PATH).glob('*.wav'):
+    print(file)
     with open(file, 'rb') as audio_file:
         file_audio_list.append(audio_file.read())
 
