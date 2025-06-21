@@ -1,4 +1,5 @@
 import time
+import threading
 
 import pyaudio
 
@@ -108,3 +109,13 @@ class MicrophoneListener:
 
         if self.verbose >= 2:
             print('No voice detected for a while, stopping recording...')
+
+    # this method invokes the listen method in a separate thread
+    def start_listening(self):
+        """
+        Starts the microphone listener in a separate thread.
+        """
+        listener_thread = threading.Thread(target=self.listen, name='microphone_listener')
+        listener_thread.start()
+        if self.verbose >= 1:
+            print('Microphone listener started.')
