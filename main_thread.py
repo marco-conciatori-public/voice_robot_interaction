@@ -59,6 +59,7 @@ def main_thread(**kwargs):
 
         if function_call is None and audio_response is None:
             time.sleep(0.2)
+        time.sleep(0.05)
 
 
 if __name__ == '__main__':
