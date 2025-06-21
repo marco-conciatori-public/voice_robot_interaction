@@ -6,6 +6,7 @@ import utils
 import global_constants as gc
 from google_ai_studio import service_interface
 from thread_shared_variables import SharedVariableManager
+from microphone.microphone_listener import MicrophoneListener
 
 
 if __name__ == '__main__':
@@ -19,6 +20,11 @@ if __name__ == '__main__':
         verbose=verbose,
     )
     google_ai_studio_service.start_services()
+    # Initialize the microphone listener
+    microphone_listener = MicrophoneListener(
+        shared_variable_manager=shared_variable_manager,
+        verbose=verbose,
+    )
 
     # add all mp3 files in the data folder
     for file in Path(gc.DATA_FOLDER_PATH).glob('*.mp3'):
