@@ -4,7 +4,7 @@ import threading
 import pyaudio
 
 import args
-import tuning
+from microphone import tuning
 import global_constants as gc
 
 
