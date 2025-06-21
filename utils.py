@@ -20,10 +20,11 @@ def get_api_key(file_path: str) -> str:
         raise Exception(f'Error reading API key from file:\n{e}')
 
 
-def play_audio(audio_data, sample_rate=24000) -> None:
+def play_audio(audio_data, output_device_index: int, sample_rate: int = 24000) -> None:
     """
     Plays audio data using the specified sample rate.
     :param audio_data: The audio data to be played, in bytes format.
+    :param output_device_index: The index of the output device to use for playback.
     :param sample_rate: The sample rate of the audio data, default is 24000 Hz.
     """
     # Initialize PyAudio
@@ -34,6 +35,7 @@ def play_audio(audio_data, sample_rate=24000) -> None:
                      channels=1,
                      rate=sample_rate,
                      output=True,
+                     output_device_index=output_device_index,
                      )
 
     # Convert byte data to numpy array for playback
