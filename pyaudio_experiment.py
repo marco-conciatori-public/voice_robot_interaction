@@ -18,6 +18,7 @@ for audio_data in file_audio_list:
     utils.play_audio(
         audio_data=audio_data,
         output_device_index=1,
+        sample_rate=16000
     )
     counter += 1
 
