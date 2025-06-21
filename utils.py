@@ -71,6 +71,7 @@ def play_audio(audio_data, output_device_index: int, channels: int = 1, sample_r
             channels=wf.getnchannels(),
             rate=wf.getframerate(),
             output=True,
+            output_device_index=output_device_index,
         )
 
         # Play samples from the wave file (3)
