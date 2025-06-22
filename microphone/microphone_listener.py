@@ -4,6 +4,7 @@ import threading
 import pyaudio
 
 import args
+import utils
 from microphone import tuning
 import global_constants as gc
 
@@ -39,6 +40,7 @@ class MicrophoneListener:
         self.is_recording = False
         self.audio_stream = None
         self.stream_params = parameters['stream_params']
+        self.save_file = parameters['save_file']
 
     def listen(self):
         """
@@ -65,7 +67,7 @@ class MicrophoneListener:
                     if self.silence_timestamp is None:
                         self.silence_timestamp = time.time()
                     if (time.time() - self.silence_timestamp) >= self.max_silence_duration:
-                        self.stop_recording()
+                        self.stop_recording(save_file=self.save_file)
                 else:
                     time.sleep(0.05)
 
@@ -87,7 +89,7 @@ class MicrophoneListener:
         if self.verbose >= 2:
             print('Voice detected, starting recording...')
 
-    def stop_recording(self):
+    def stop_recording(self, save_file: bool = False):
         """
         Stops the current recording and saves the audio data.
         """
@@ -95,15 +97,15 @@ class MicrophoneListener:
         self.audio_stream.close()
         self.audio_stream = None
 
-        # utils.save_wave_file(
-        #     file_path=f'{gc.DATA_FOLDER_PATH}recording_{int(time.time())}.wav',
-        #     byte_data=b''.join(self.current_recording),
-        #     channels=MicrophoneListener.CHANNELS,
-        #     rate=MicrophoneListener.RATE,
-        #     sample_width=MicrophoneListener.WIDTH,
-        # )
+        if save_file:
+            utils.save_wave_file(
+                file_path=f'{gc.OUTPUT_FOLDER_PATH}recording_{int(time.time())}.wav',
+                byte_data=b''.join(self.current_recording),
+                channels=self.stream_params['channels'],
+                rate=self.stream_params['sample_rate'],
+                sample_width=self.stream_params['width'],
+            )
         self.shared_variable_manager.add_reasoning_request({'audio_bytes': b''.join(self.current_recording)})
-
         self.current_recording = []
         self.is_recording = False
 

@@ -11,6 +11,9 @@ product_id: 0x0018
 # if a voice was detected and a recording started, if no voice is detected for this duration, the recording will stop
 max_silence_duration: 2
 
+# whether to save audio files recorded by the microphone listener
+save_file: True
+
 # audio stream configuration
 stream_params:
   # audio sample rate in Hz
