@@ -18,7 +18,9 @@ def main_thread(**kwargs):
     parameters = args.import_args(yaml_path=gc.CONFIG_FOLDER_PATH + 'main_thread.yaml', **kwargs)
     verbose = parameters['verbose']
 
+    print('-----------------------------------------------------------')
     print(os.system('whoami'))  # Print the current user for debugging purposes
+    print('-----------------------------------------------------------')
 
     # Initialize the shared variable manager
     shared_variable_manager = SharedVariableManager(verbose=verbose)
