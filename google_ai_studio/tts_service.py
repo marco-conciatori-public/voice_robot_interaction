@@ -11,12 +11,15 @@ def text_to_speech(text_input: str,
                    client: genai.Client,
                    model_name: str = 'gemini-2.5-flash-preview-tts',
                    voice_name: str = 'kore',
-                   save_file: bool = False
+                   save_file: bool = False,
+                   verbose: int = 0
                    ):
     """
     Generates speech from text using Google AI Studio's TTS model.
     This function sends a text prompt to the TTS model and saves the generated audio to a file.
     """
+    if verbose >= 2:
+        print(f'Generating speech for text:\n\t{text_input}')
     # # add 'Say ' prefix to the text input
     # text_input = f'Say "{text_input}"'
     response = client.models.generate_content(

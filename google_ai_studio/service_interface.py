@@ -62,6 +62,7 @@ class GoogleAIStudioService:
                     text_input=request,
                     client=self.client,
                     **self.tts_parameters,
+                    verbose=self.verbose,
                 )
                 self.shared_variable_manager.add_audio_response(audio_response)
             else:
