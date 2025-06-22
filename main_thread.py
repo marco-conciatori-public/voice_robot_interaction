@@ -1,3 +1,4 @@
+import os
 import time
 from pathlib import Path
 
@@ -16,6 +17,8 @@ def main_thread(**kwargs):
     """
     parameters = args.import_args(yaml_path=gc.CONFIG_FOLDER_PATH + 'main_thread.yaml', **kwargs)
     verbose = parameters['verbose']
+
+    print(os.system('whoami'))  # Print the current user for debugging purposes
 
     # Initialize the shared variable manager
     shared_variable_manager = SharedVariableManager(verbose=verbose)
