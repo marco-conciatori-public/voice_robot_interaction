@@ -40,7 +40,8 @@ def text_to_speech(text_input: str,
         # Use first 10 characters of text as filename
         file_name = f'{text_input[:10].replace(" ", "_")}.wav'
         file_path = gc.OUTPUT_FOLDER_PATH + file_name
-        print(f'Saving audio to "{file_path}"')
+        if verbose >= 2:
+            print(f'Saving audio to "{file_path}"')
         utils.save_wave_file(file_path=file_path, byte_data=data)  # Saves the file
 
     return data
