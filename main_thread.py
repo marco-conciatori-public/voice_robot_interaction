@@ -1,6 +1,5 @@
 import os
 import time
-from pathlib import Path
 
 import args
 import utils
@@ -38,11 +37,6 @@ def main_thread(**kwargs):
         verbose=verbose,
     )
     microphone_listener.start_listening()
-
-    # # add all mp3 files in the data folder
-    # for file in Path(gc.DATA_FOLDER_PATH).glob('*.mp3'):
-    #     with open(file, 'rb') as audio_file:
-    #         shared_variable_manager.add_reasoning_request({'audio_bytes': audio_file.read()})
 
     while True:
         function_call = shared_variable_manager.pop_function_call_response()

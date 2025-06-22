@@ -14,8 +14,8 @@ class MicrophoneListener:
         Initializes the MicrophoneListener with the specified product and vendor IDs.
         :param product_id: value needed to identify the microphone device.
         :param vendor_id: value needed to identify the microphone device.
-        :param max_silence_duration: maximum duration in seconds after which a recording is
-         stopped if no voice is detected.
+        :param max_silence_duration: maximum duration in seconds after which a recording is stopped if no voice is
+         detected.
         :param verbose: verbosity level for logging.
         """
         parameters = args.import_args(yaml_path=gc.CONFIG_FOLDER_PATH + 'microphone_listener.yaml', **kwargs)
