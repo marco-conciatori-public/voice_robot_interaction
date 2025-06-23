@@ -33,18 +33,6 @@ def main_thread(**kwargs):
     )
     microphone_listener.start_listening()
 
-    # from pathlib import Path
-    # for file in Path(gc.DATA_FOLDER_PATH).glob('*.*'):
-    #     with open(file, 'rb') as audio_file:
-    #         print(file)
-    #         print(audio_file.read()[:20])  # Print first 20 bytes for debugging
-    #         # shared_variable_manager.add_reasoning_request({'audio_bytes': audio_file.read()})
-    # for file in Path(gc.OUTPUT_FOLDER_PATH).glob('*.*'):
-    #     with open(file, 'rb') as audio_file:
-    #         print(file)
-    #         print(audio_file.read()[:20])  # Print first 20 bytes for debugging
-    #         # shared_variable_manager.add_reasoning_request({'audio_bytes': audio_file.read()})
-
     while True:
         function_call = shared_variable_manager.pop_function_call_response()
         if function_call is not None:

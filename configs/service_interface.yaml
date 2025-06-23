@@ -13,4 +13,4 @@ reasoning_parameters:
 tts_parameters:
   model_name: gemini-2.5-flash-preview-tts
   voice_name: kore
-  save_file: True
+  save_file: False
