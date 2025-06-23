@@ -118,3 +118,16 @@ class MicrophoneListener:
         listener_thread.start()
         if self.verbose >= 1:
             print('Microphone listener started.')
+
+    def __del__(self):
+        """
+        Closes the microphone interface and releases resources.
+        """
+        if self.audio_stream is not None:
+            self.audio_stream.stop_stream()
+            self.audio_stream.close()
+        self.pa.terminate()
+        if self.microphone:
+            self.microphone.close()
+        if self.verbose >= 1:
+            print('Microphone listener closed.')
