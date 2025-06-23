@@ -4,4 +4,4 @@
 
 echo whoami
 
-wait
+exec $SHELL
