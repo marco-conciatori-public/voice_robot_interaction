@@ -28,7 +28,6 @@ def reasoning(model_name: str,
     try:
         audio_input = [
             prompt_template,
-            # TODO: check mime type
             types.Part.from_bytes(data=audio_bytes, mime_type=mime_type)
         ]
         if config is None:

@@ -58,9 +58,9 @@ class MicrophoneListener:
             format=self.pa.get_format_from_width(self.stream_params['width']),
             channels=self.stream_params['channels'],
             rate=self.stream_params['sample_rate'],
-            input=True,
-            input_device_index=self.device_index,
             frames_per_buffer=self.stream_params['chunk_size'],
+            input_device_index=self.device_index,
+            input=True,
             start=False,
         )
 
