@@ -1,3 +1,5 @@
+import io
+import wave
 import time
 import threading
 
@@ -107,7 +109,16 @@ class MicrophoneListener:
                 sample_width=self.stream_params['width'],
                 verbose=self.verbose,
             )
-        self.shared_variable_manager.add_reasoning_request({'audio_bytes': b''.join(self.current_recording)})
+        output_buffer = io.BytesIO()
+        with wave.open(f=output_buffer, mode='wb') as wf:
+            wf.setnchannels(self.stream_params['channels'])
+            wf.setsampwidth(self.stream_params['width'])  # 2 bytes for 16-bit audio
+            wf.setframerate(self.stream_params['sample_rate'])
+            wf.writeframes(b''.join(self.current_recording))
+        # Get the bytes from the buffer
+        wav_bytes_in_memory = output_buffer.getvalue()
+
+        self.shared_variable_manager.add_reasoning_request({'audio_bytes': wav_bytes_in_memory})
         print(f"first 20 bytes of recorded audio: {b''.join(self.current_recording)[:20]}")
         self.current_recording = []
 
