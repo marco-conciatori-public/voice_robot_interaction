@@ -17,6 +17,7 @@ def import_args(yaml_path: str, read_from_command_line: bool = False, **kwargs) 
             with open(yaml_path) as f:
                 data_dict = yaml.safe_load(f)
         except FileNotFoundError:
+            print(f'File "{yaml_path}" not found. Trying to go up one level...')
             if level_up == max_iterations:
                 raise
             level_up += 1
