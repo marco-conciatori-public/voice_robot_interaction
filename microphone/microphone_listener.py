@@ -59,7 +59,7 @@ class MicrophoneListener:
             channels=self.stream_params['channels'],
             rate=self.stream_params['sample_rate'],
             frames_per_buffer=self.stream_params['chunk_size'],
-            # input_device_index=self.device_index,
+            input_device_index=self.device_index,
             input=True,
             start=False,
         )
