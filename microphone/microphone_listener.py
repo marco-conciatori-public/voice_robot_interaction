@@ -37,7 +37,6 @@ class MicrophoneListener:
         # duration in seconds after which a recording is stopped if no voice is detected
         self.max_silence_duration = parameters['max_silence_duration']
         self.pa = pyaudio.PyAudio()
-        self.is_recording = False
         self.audio_stream = None
         self.stream_params = parameters['stream_params']
         self.save_file = parameters['save_file']
@@ -55,15 +54,25 @@ class MicrophoneListener:
         if self.verbose >= 1:
             print('Starting to listen to the microphone...')
 
+        self.audio_stream = self.pa.open(
+            format=self.pa.get_format_from_width(self.stream_params['width']),
+            channels=self.stream_params['channels'],
+            rate=self.stream_params['sample_rate'],
+            input=True,
+            input_device_index=self.device_index,
+            frames_per_buffer=self.stream_params['chunk_size'],
+            start=False,
+        )
+
         while True:
             if self.microphone.is_voice():
                 self.silence_timestamp = None
-                if not self.is_recording:
+                if self.audio_stream.is_stopped():
                     self.start_recording()
                 else:
                     self.current_recording.append(self.audio_stream.read(self.stream_params['chunk_size']))
             else:
-                if self.is_recording:
+                if self.audio_stream.is_active():
                     if self.silence_timestamp is None:
                         self.silence_timestamp = time.time()
                     if (time.time() - self.silence_timestamp) >= self.max_silence_duration:
@@ -75,17 +84,8 @@ class MicrophoneListener:
         """
         Starts recording audio from the microphone.
         """
-        self.is_recording = True
-
         self.current_recording = []
-        self.audio_stream = self.pa.open(
-            format=self.pa.get_format_from_width(self.stream_params['width']),
-            channels=self.stream_params['channels'],
-            rate=self.stream_params['sample_rate'],
-            input=True,
-            input_device_index=self.device_index,
-            frames_per_buffer=self.stream_params['chunk_size'],
-        )
+        self.audio_stream.start_stream()
         if self.verbose >= 2:
             print('Voice detected, starting recording...')
 
@@ -94,8 +94,6 @@ class MicrophoneListener:
         Stops the current recording and saves the audio data.
         """
         self.audio_stream.stop_stream()
-        self.audio_stream.close()
-        self.audio_stream = None
 
         if save_file:
             utils.save_wave_file(
@@ -107,7 +105,6 @@ class MicrophoneListener:
             )
         self.shared_variable_manager.add_reasoning_request({'audio_bytes': b''.join(self.current_recording)})
         self.current_recording = []
-        self.is_recording = False
 
         if self.verbose >= 2:
             print('No voice detected for a while, stopping recording...')
