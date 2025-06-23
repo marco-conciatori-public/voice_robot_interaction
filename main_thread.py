@@ -44,6 +44,7 @@ def main_thread(**kwargs):
     #         print(file)
     #         print(audio_file.read()[:20])  # Print first 20 bytes for debugging
     #         # shared_variable_manager.add_reasoning_request({'audio_bytes': audio_file.read()})
+
     while True:
         function_call = shared_variable_manager.pop_function_call_response()
         if function_call is not None:
