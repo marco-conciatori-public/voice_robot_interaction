@@ -5,7 +5,7 @@ import utils
 import global_constants as gc
 from google_ai_studio import service_interface
 from thread_shared_variables import SharedVariableManager
-# from microphone.microphone_listener import MicrophoneListener
+from microphone.microphone_listener import MicrophoneListener
 
 
 def main_thread(**kwargs):
@@ -27,23 +27,23 @@ def main_thread(**kwargs):
     google_ai_studio_service.start_services()
 
     # Initialize the microphone listener
-    # microphone_listener = MicrophoneListener(
-    #     shared_variable_manager=shared_variable_manager,
-    #     verbose=verbose,
-    # )
-    # microphone_listener.start_listening()
+    microphone_listener = MicrophoneListener(
+        shared_variable_manager=shared_variable_manager,
+        verbose=verbose,
+    )
+    microphone_listener.start_listening()
 
-    from pathlib import Path
-    for file in Path(gc.DATA_FOLDER_PATH).glob('*.*'):
-        with open(file, 'rb') as audio_file:
-            print(file)
-            print(audio_file.read()[:20])  # Print first 20 bytes for debugging
-            # shared_variable_manager.add_reasoning_request({'audio_bytes': audio_file.read()})
-    for file in Path(gc.OUTPUT_FOLDER_PATH).glob('*.*'):
-        with open(file, 'rb') as audio_file:
-            print(file)
-            print(audio_file.read()[:20])  # Print first 20 bytes for debugging
-            # shared_variable_manager.add_reasoning_request({'audio_bytes': audio_file.read()})
+    # from pathlib import Path
+    # for file in Path(gc.DATA_FOLDER_PATH).glob('*.*'):
+    #     with open(file, 'rb') as audio_file:
+    #         print(file)
+    #         print(audio_file.read()[:20])  # Print first 20 bytes for debugging
+    #         # shared_variable_manager.add_reasoning_request({'audio_bytes': audio_file.read()})
+    # for file in Path(gc.OUTPUT_FOLDER_PATH).glob('*.*'):
+    #     with open(file, 'rb') as audio_file:
+    #         print(file)
+    #         print(audio_file.read()[:20])  # Print first 20 bytes for debugging
+    #         # shared_variable_manager.add_reasoning_request({'audio_bytes': audio_file.read()})
     while True:
         function_call = shared_variable_manager.pop_function_call_response()
         if function_call is not None:
