@@ -108,6 +108,7 @@ class MicrophoneListener:
                 verbose=self.verbose,
             )
         self.shared_variable_manager.add_reasoning_request({'audio_bytes': b''.join(self.current_recording)})
+        print(f"first 20 bytes of recorded audio: {b''.join(self.current_recording)[:20]}")
         self.current_recording = []
 
         if self.verbose >= 2:

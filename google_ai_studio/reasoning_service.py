@@ -26,6 +26,7 @@ def reasoning(model_name: str,
              error message if an exception occurs.
     """
     try:
+        print(f"sending 20 bytes of recorded audio: {audio_bytes[:20]}")
         audio_input = [
             prompt_template,
             types.Part.from_bytes(data=audio_bytes, mime_type=mime_type)
