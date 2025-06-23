@@ -59,7 +59,7 @@ class MicrophoneListener:
             channels=self.stream_params['channels'],
             rate=self.stream_params['sample_rate'],
             input=True,
-            # input_device_index=self.device_index,
+            input_device_index=self.device_index,
             frames_per_buffer=self.stream_params['chunk_size'],
             start=False,
         )
@@ -70,7 +70,10 @@ class MicrophoneListener:
                 if self.audio_stream.is_stopped():
                     self.start_recording()
                 else:
-                    self.current_recording.append(self.audio_stream.read(self.stream_params['chunk_size']))
+                    self.current_recording.append(self.audio_stream.read(
+                        num_frames=self.stream_params['chunk_size'],
+                        exception_on_overflow=False
+                    ))
             else:
                 if self.audio_stream.is_active():
                     if self.silence_timestamp is None:
