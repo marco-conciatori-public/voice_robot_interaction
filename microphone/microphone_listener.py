@@ -105,6 +105,7 @@ class MicrophoneListener:
                 channels=self.stream_params['channels'],
                 rate=self.stream_params['sample_rate'],
                 sample_width=self.stream_params['width'],
+                verbose=self.verbose,
             )
         self.shared_variable_manager.add_reasoning_request({'audio_bytes': b''.join(self.current_recording)})
         self.current_recording = []

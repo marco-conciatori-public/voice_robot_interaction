@@ -64,10 +64,12 @@ def pretty_print_dict(data, _level: int = 0) -> None:
         print(data)
 
 
-def save_wave_file(file_path: str, byte_data, channels=1, rate=24000, sample_width=2) -> None:
+def save_wave_file(file_path: str, byte_data, channels=1, rate=24000, sample_width=2, verbose: int = 0) -> None:
     # Set up the wave file to save the output:
     with wave.open(file_path, mode='wb') as wf:
         wf.setnchannels(channels)
         wf.setsampwidth(sample_width)
         wf.setframerate(rate)
         wf.writeframes(byte_data)
+    if verbose >= 1:
+        print(f'Saved audio file to "{file_path}"')
