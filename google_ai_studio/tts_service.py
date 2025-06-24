@@ -1,3 +1,4 @@
+import time
 from pathlib import Path
 
 from google import genai
@@ -32,6 +33,9 @@ def text_to_speech(text_input: str,
             ),
         )
     )
+    # response could be very long, for debug purposes, save to a file
+    with open(f'{gc.OUTPUT_FOLDER_PATH}tts_response_{time.time()}.txt', 'w') as f:
+        f.write(str(response))
     data = response.candidates[0].content.parts[0].inline_data.data
 
     if save_file:
