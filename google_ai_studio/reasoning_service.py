@@ -41,6 +41,9 @@ def reasoning(model_name: str,
                 contents=audio_input,
                 config=config,
             )
+        print('-----------------------------------------------------')
+        print(response)
+        print('-----------------------------------------------------')
 
         # Check for a function call
         # returns a tuple (is_function_call, response)
