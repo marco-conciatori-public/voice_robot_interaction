@@ -51,8 +51,6 @@ def main_thread(**kwargs):
                 channels=1,
                 dtype='int16',
             )
-            # TODO: send to robot speaker
-
         if function_call is None and audio_response is None:
             time.sleep(0.2)
         time.sleep(0.05)
