@@ -1,3 +1,4 @@
-DATA_FOLDER_PATH = 'data/'
-OUTPUT_FOLDER_PATH = 'output/'
-CONFIG_FOLDER_PATH = 'configs/'
+PROJECT_FOLDER_PATH = '/home/jetson/GIT/voice_robot_interaction/'
+DATA_FOLDER_PATH = PROJECT_FOLDER_PATH + 'data/'
+OUTPUT_FOLDER_PATH = PROJECT_FOLDER_PATH + 'output/'
+CONFIG_FOLDER_PATH = PROJECT_FOLDER_PATH + 'configs/'
