@@ -15,10 +15,12 @@ class MicrophoneListener:
     def __init__(self, shared_variable_manager, **kwargs):
         """
         Initializes the MicrophoneListener with the specified product and vendor IDs.
+        :param shared_variable_manager: instance of SharedVariableManager to manage shared variables.
         :param product_id: value needed to identify the microphone device.
         :param vendor_id: value needed to identify the microphone device.
         :param max_silence_duration: maximum duration in seconds after which a recording is stopped if no voice is
          detected.
+        :param min_sentence_duration: minimum duration in seconds for a valid recording.
         :param verbose: verbosity level for logging.
         """
         parameters = args.import_args(yaml_path=gc.CONFIG_FOLDER_PATH + 'microphone_listener.yaml', **kwargs)
@@ -125,7 +127,10 @@ class MicrophoneListener:
                 wf.writeframes(b''.join(self.current_recording))
             # Get the bytes from the buffer
             wav_bytes_in_memory = output_buffer.getvalue()
-            self.shared_variable_manager.add_reasoning_request({'audio_bytes': wav_bytes_in_memory})
+            self.shared_variable_manager.add_to(
+                queue_name='reasoning_requests',
+                value={'audio_bytes': wav_bytes_in_memory},
+            )
             if self.verbose >= 3:
                 print('Recording saved.')
         else:

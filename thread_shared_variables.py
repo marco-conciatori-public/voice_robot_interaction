@@ -8,49 +8,35 @@ class SharedVariableManager:
         self.tts_requests = []
         self.function_call_responses = []
         self.audio_responses = []
+        self.received_ethernet_data = []
 
         # Locks for thread safety
         self.reasoning_requests_lock = threading.Lock()
         self.tts_requests_lock = threading.Lock()
         self.function_call_responses_lock = threading.Lock()
         self.audio_responses_lock = threading.Lock()
+        self.received_ethernet_data_lock = threading.Lock()
 
-    def add_reasoning_request(self, reasoning_request) -> None:
-        with self.reasoning_requests_lock:
-            self.reasoning_requests.append(reasoning_request)
+    def add_to(self, queue_name: str, value) -> None:
+        """
+        Adds a value to a shared variable list.
+        :param queue_name: The name of the shared variable list.
+        :param value: The value to add to the list.
+        """
+        lock = getattr(self, f"{queue_name}_lock")
+        with lock:
+            getattr(self, queue_name).append(value)
 
-    def pop_reasoning_request(self):
-        with self.reasoning_requests_lock:
-            if len(self.reasoning_requests) > 0:
-                return self.reasoning_requests.pop(0)
+    def pop_from(self, queue_name: str):
+        """
+        Pops a value from a shared variable list.
+        :param queue_name: The name of the shared variable list.
+        :return: The popped value or None if the list is empty.
+        """
+        lock = getattr(self, f"{queue_name}_lock")
+        with lock:
+            variable_list = getattr(self, queue_name)
+            if len(variable_list) > 0:
+                return variable_list.pop(0)
             return None
 
-    def add_tts_request(self, tts_request) -> None:
-        with self.tts_requests_lock:
-            self.tts_requests.append(tts_request)
-
-    def pop_tts_request(self):
-        with self.tts_requests_lock:
-            if len(self.tts_requests) > 0:
-                return self.tts_requests.pop(0)
-            return None
-
-    def add_function_call_response(self, function_call) -> None:
-        with self.function_call_responses_lock:
-            self.function_call_responses.append(function_call)
-
-    def pop_function_call_response(self):
-        with self.function_call_responses_lock:
-            if len(self.function_call_responses) > 0:
-                return self.function_call_responses.pop(0)
-            return None
-
-    def add_audio_response(self, audio_response) -> None:
-        with self.audio_responses_lock:
-            self.audio_responses.append(audio_response)
-
-    def pop_audio_response(self):
-        with self.audio_responses_lock:
-            if len(self.audio_responses) > 0:
-                return self.audio_responses.pop(0)
-            return None

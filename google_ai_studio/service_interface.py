@@ -34,7 +34,7 @@ class GoogleAIStudioService:
         It sends audio prompts to the Google AI Studio LLM and handles the responses.
         """
         while True:
-            request = self.shared_variable_manager.pop_reasoning_request()
+            request = self.shared_variable_manager.pop_from(queue_name='reasoning_requests')
             if request is not None:
                 try:
                     textual_response, function_call_response = reasoning_service.reasoning(
@@ -44,9 +44,12 @@ class GoogleAIStudioService:
                         **self.reasoning_parameters,
                     )
                     if function_call_response is not None:
-                        self.shared_variable_manager.add_function_call_response(function_call_response)
+                        self.shared_variable_manager.add_to(
+                            queue_name='function_call_responses',
+                            value=function_call_response,
+                        )
                     if textual_response is not None:
-                        self.shared_variable_manager.add_tts_request(textual_response)
+                        self.shared_variable_manager.add_to(queue_name='tts_requests', value=textual_response)
                 except Exception as e:
                     print(f'Error in reasoning service:\n\t{e}\n\t{e.__traceback__}')
             else:
@@ -59,7 +62,7 @@ class GoogleAIStudioService:
         It converts text prompts to audio using the Google AI Studio TTS service and handles the responses.
         """
         while True:
-            request = self.shared_variable_manager.pop_tts_request()
+            request = self.shared_variable_manager.pop_from(queue_name='tts_requests')
             if request is not None:
                 try:
                     audio_response = tts_service.text_to_speech(
@@ -72,7 +75,7 @@ class GoogleAIStudioService:
                     print(f'Error in TTS service:\n\t{e}\n\t{e.__traceback__}')
                     audio_response = None
                 if audio_response is not None:
-                    self.shared_variable_manager.add_audio_response(audio_response)
+                    self.shared_variable_manager.add_to(queue_name='audio_responses', value=audio_response)
             else:
                 time.sleep(0.2)
             time.sleep(0.02)
