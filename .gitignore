@@ -1,5 +1,6 @@
 .idea/
-.venv*
+.venv/
+*__pycache__/
 data/
 output/
 google_ai_studio/gemini_api_key.txt
