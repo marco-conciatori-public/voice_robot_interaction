@@ -123,7 +123,7 @@ class MicrophoneListener:
         self.current_recording = []
 
         if self.verbose >= 2:
-            print('No voice detected for a while, stopping recording...')
+            print('No voice detected for a while, stop recording...')
 
     # this method invokes the listen method in a separate thread
     def start_listening(self):
