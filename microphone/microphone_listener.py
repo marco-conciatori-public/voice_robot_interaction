@@ -36,8 +36,10 @@ class MicrophoneListener:
             raise RuntimeError(f'Failed to initialize microphone with VID: {self.vendor_id}, PID: {self.product_id}')
         self.current_recording = None
         self.silence_timestamp = None
+        self.start_recording_timestamp = None
         # duration in seconds after which a recording is stopped if no voice is detected
         self.max_silence_duration = parameters['max_silence_duration']
+        self.min_sentence_duration = parameters['min_sentence_duration']
         self.pa = pyaudio.PyAudio()
         self.audio_stream = None
         self.stream_params = parameters['stream_params']
@@ -90,6 +92,7 @@ class MicrophoneListener:
         Starts recording audio from the microphone.
         """
         self.current_recording = []
+        self.start_recording_timestamp = time.time()
         self.audio_stream.start_stream()
         if self.verbose >= 2:
             print('Voice detected, starting recording...')
@@ -99,31 +102,35 @@ class MicrophoneListener:
         Stops the current recording and saves the audio data.
         """
         self.audio_stream.stop_stream()
-
-        if save_file:
-            utils.save_wave_file(
-                file_path=f'{gc.OUTPUT_FOLDER_PATH}recording_{int(time.time())}.wav',
-                byte_data=b''.join(self.current_recording),
-                channels=self.stream_params['channels'],
-                rate=self.stream_params['sample_rate'],
-                sample_width=self.stream_params['width'],
-                verbose=self.verbose,
-            )
-
-        # format the audio data into a WAV file in memory
-        output_buffer = io.BytesIO()
-        with wave.open(f=output_buffer, mode='wb') as wf:
-            wf.setnchannels(self.stream_params['channels'])
-            wf.setsampwidth(self.stream_params['width'])  # 2 bytes for 16-bit audio
-            wf.setframerate(self.stream_params['sample_rate'])
-            wf.writeframes(b''.join(self.current_recording))
-        # Get the bytes from the buffer
-        wav_bytes_in_memory = output_buffer.getvalue()
-        self.shared_variable_manager.add_reasoning_request({'audio_bytes': wav_bytes_in_memory})
-        self.current_recording = []
-
         if self.verbose >= 2:
             print('No voice detected for a while, stop recording...')
+
+        if (time.time() - self.start_recording_timestamp) >= self.min_sentence_duration + self.max_silence_duration:
+            if save_file:
+                utils.save_wave_file(
+                    file_path=f'{gc.OUTPUT_FOLDER_PATH}recording_{int(time.time())}.wav',
+                    byte_data=b''.join(self.current_recording),
+                    channels=self.stream_params['channels'],
+                    rate=self.stream_params['sample_rate'],
+                    sample_width=self.stream_params['width'],
+                    verbose=self.verbose,
+                )
+
+            # format the audio data into a WAV file in memory
+            output_buffer = io.BytesIO()
+            with wave.open(f=output_buffer, mode='wb') as wf:
+                wf.setnchannels(self.stream_params['channels'])
+                wf.setsampwidth(self.stream_params['width'])  # 2 bytes for 16-bit audio
+                wf.setframerate(self.stream_params['sample_rate'])
+                wf.writeframes(b''.join(self.current_recording))
+            # Get the bytes from the buffer
+            wav_bytes_in_memory = output_buffer.getvalue()
+            self.shared_variable_manager.add_reasoning_request({'audio_bytes': wav_bytes_in_memory})
+            if self.verbose >= 3:
+                print('Recording saved.')
+        else:
+            if self.verbose >= 3:
+                print('Recording too short, not saving.')
 
     # this method invokes the listen method in a separate thread
     def start_listening(self):

@@ -9,7 +9,10 @@ vendor_id: 0x2886
 product_id: 0x0018
 
 # if a voice was detected and a recording started, if no voice is detected for this duration, the recording will stop
+# (in seconds)
 max_silence_duration: 2
+# recordings shorter than this duration (seconds) will be discarded
+min_sentence_duration: 1.5
 
 # whether to save audio files recorded by the microphone listener
 save_file: False
