@@ -1,3 +1,5 @@
+import warnings
+
 from google import genai
 from google.genai import types
 
@@ -42,18 +44,18 @@ def reasoning(model_name: str,
                 config=config,
             )
 
-        # Check for a function call
-        # returns a tuple (is_function_call, response)
-        if response.candidates[0].content.parts[0].function_call:
-            function_call = response.candidates[0].content.parts[0].function_call
-            # print('Function call detected in the response.')
-            # print(f'Function to call: {function_call.name}')
-            # print(f'Arguments: {function_call.args}')
-            return True, function_call
-        else:
-            # print('No function call detected in the response.')
-            # print(f'Response: {response.candidates[0].content.parts[0].text}')
-            return False, response.text
+        text = None
+        function_call = None
+        for part in response.candidates[0].content.parts:
+            if part.text:
+                text = part.text
+            elif part.function_call:
+                function_call = part.function_call
+            else:
+                warnings.warn(f'Unexpected part type in response:\n\t{part}')
+        # TODO: can the response contain multiple function calls?
+
+        return text, function_call
 
     except Exception as e:
         return False, f'An error occurred:\n{e}'

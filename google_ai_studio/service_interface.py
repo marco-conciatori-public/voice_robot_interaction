@@ -36,16 +36,16 @@ class GoogleAIStudioService:
         while True:
             request = self.shared_variable_manager.pop_reasoning_request()
             if request is not None:
-                is_function_call, response = reasoning_service.reasoning(
+                textual_response, function_call_response = reasoning_service.reasoning(
                     client=self.client,
                     config=self.config,
                     **request,
                     **self.reasoning_parameters,
                 )
-                if is_function_call:
-                    self.shared_variable_manager.add_function_call_response(response)
-                else:
-                    self.shared_variable_manager.add_tts_request(response)
+                if function_call_response is not None:
+                    self.shared_variable_manager.add_function_call_response(function_call_response)
+                if textual_response is not None:
+                    self.shared_variable_manager.add_tts_request(textual_response)
             else:
                 time.sleep(0.2)
             time.sleep(0.02)
