@@ -15,9 +15,9 @@ class SharedVariableManager:
         self.function_call_responses_lock = threading.Lock()
         self.audio_responses_lock = threading.Lock()
 
-    def add_reasoning_request(self, request) -> None:
+    def add_reasoning_request(self, reasoning_request) -> None:
         with self.reasoning_requests_lock:
-            self.reasoning_requests.append(request)
+            self.reasoning_requests.append(reasoning_request)
 
     def pop_reasoning_request(self):
         with self.reasoning_requests_lock:
@@ -25,9 +25,9 @@ class SharedVariableManager:
                 return self.reasoning_requests.pop(0)
             return None
 
-    def add_tts_request(self, request) -> None:
+    def add_tts_request(self, tts_request) -> None:
         with self.tts_requests_lock:
-            self.tts_requests.append(request)
+            self.tts_requests.append(tts_request)
 
     def pop_tts_request(self):
         with self.tts_requests_lock:
@@ -35,9 +35,9 @@ class SharedVariableManager:
                 return self.tts_requests.pop(0)
             return None
 
-    def add_function_call_response(self, response) -> None:
+    def add_function_call_response(self, function_call) -> None:
         with self.function_call_responses_lock:
-            self.function_call_responses.append(response)
+            self.function_call_responses.append(function_call)
 
     def pop_function_call_response(self):
         with self.function_call_responses_lock:
@@ -45,9 +45,9 @@ class SharedVariableManager:
                 return self.function_call_responses.pop(0)
             return None
 
-    def add_audio_response(self, response) -> None:
+    def add_audio_response(self, audio_response) -> None:
         with self.audio_responses_lock:
-            self.audio_responses.append(response)
+            self.audio_responses.append(audio_response)
 
     def pop_audio_response(self):
         with self.audio_responses_lock:
