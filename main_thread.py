@@ -34,24 +34,24 @@ def main_thread(**kwargs):
     microphone_listener.start_listening()
 
     while True:
-        function_call = shared_variable_manager.pop_from(queue_name='function_call_responses')
+        function_call = shared_variable_manager.pop_from(queue_name='functions_to_call')
         if function_call is not None:
             print(f'type(function_call): {type(function_call)}')
             print(f'function_call:\n{function_call}')
             if verbose >= 2:
                 print(f'Function call detected:\n\t{function_call.name}{function_call.args}')
             # TODO: Implement the function execution logic
-        audio_response = shared_variable_manager.pop_from(queue_name='audio_responses')
-        if audio_response is not None:
+        audio_to_play = shared_variable_manager.pop_from(queue_name='audio_to_play')
+        if audio_to_play is not None:
             if verbose >= 2:
                 print(f'Audio response received.')
             utils.play_audio(
-                audio_bytes=audio_response,
+                audio_bytes=audio_to_play,
                 sample_rate=24000,
                 channels=1,
                 dtype='int16',
             )
-        if function_call is None and audio_response is None:
+        if function_call is None and audio_to_play is None:
             time.sleep(0.2)
         time.sleep(0.05)
 

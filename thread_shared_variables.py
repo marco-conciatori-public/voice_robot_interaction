@@ -6,8 +6,8 @@ class SharedVariableManager:
         # Shared variables
         self.reasoning_requests = []
         self.tts_requests = []
-        self.function_call_responses = []
-        self.audio_responses = []
+        self.functions_to_call = []
+        self.audio_to_play = []
         self.received_ethernet_data = []
 
         # Locks for thread safety

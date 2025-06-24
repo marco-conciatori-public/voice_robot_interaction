@@ -45,7 +45,7 @@ class GoogleAIStudioService:
                     )
                     if function_call_response is not None:
                         self.shared_variable_manager.add_to(
-                            queue_name='function_call_responses',
+                            queue_name='functions_to_call',
                             value=function_call_response,
                         )
                     if textual_response is not None:
@@ -75,7 +75,7 @@ class GoogleAIStudioService:
                     print(f'Error in TTS service:\n\t{e}\n\t{e.__traceback__}')
                     audio_response = None
                 if audio_response is not None:
-                    self.shared_variable_manager.add_to(queue_name='audio_responses', value=audio_response)
+                    self.shared_variable_manager.add_to(queue_name='audio_to_play', value=audio_response)
             else:
                 time.sleep(0.2)
             time.sleep(0.02)
