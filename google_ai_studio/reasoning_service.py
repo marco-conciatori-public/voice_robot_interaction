@@ -6,8 +6,8 @@ from google.genai import types
 
 def reasoning(model_name: str,
               audio_bytes,
-              prompt_template: str,
               client: genai.Client,
+              prompt_template: str = None,
               config=None,
               mime_type='audio/wav') -> tuple:
     """
@@ -28,10 +28,10 @@ def reasoning(model_name: str,
              error message if an exception occurs.
     """
     try:
-        audio_input = [
-            prompt_template,
-            types.Part.from_bytes(data=audio_bytes, mime_type=mime_type)
-        ]
+        if prompt_template is None:
+            audio_input = [types.Part.from_bytes(data=audio_bytes, mime_type=mime_type)]
+        else:
+            audio_input = [prompt_template, types.Part.from_bytes(data=audio_bytes, mime_type=mime_type)]
         if config is None:
             response = client.models.generate_content(
                 model=model_name,
