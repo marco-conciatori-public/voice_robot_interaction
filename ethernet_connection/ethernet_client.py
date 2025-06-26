@@ -5,7 +5,6 @@ import threading
 import args
 import global_constants as gc
 
-
 class EthernetClient:
     def __init__(self, shared_variable_manager, **kwargs):
         """
