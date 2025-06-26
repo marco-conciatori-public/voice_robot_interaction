@@ -132,10 +132,10 @@ class MicrophoneListener:
                 value={'audio_bytes': wav_bytes_in_memory},
             )
             if self.verbose >= 3:
-                print('Recording saved.')
+                print('Recording accepted.')
         else:
             if self.verbose >= 3:
-                print('Recording too short, not saving.')
+                print('Recording too short, not accepted.')
 
     # this method invokes the listen method in a separate thread
     def start_listening(self):
