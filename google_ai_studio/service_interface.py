@@ -28,7 +28,7 @@ class GoogleAIStudioService:
         self.reasoning_parameters = parameters['reasoning_parameters']
         self.tts_parameters = parameters['tts_parameters']
 
-    def run_reasoning_service(self):
+    def run_reasoning_service(self) -> None:
         """
         Continuously processes reasoning requests from the shared variable manager.
         It sends audio prompts to the Google AI Studio LLM and handles the responses.
@@ -56,7 +56,7 @@ class GoogleAIStudioService:
                 time.sleep(0.2)
             time.sleep(0.02)
 
-    def run_tts_service(self):
+    def run_tts_service(self) -> None:
         """
         Continuously processes TTS requests from the shared variable manager.
         It converts text prompts to audio using the Google AI Studio TTS service and handles the responses.
