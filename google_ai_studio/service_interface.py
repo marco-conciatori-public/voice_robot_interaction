@@ -80,7 +80,7 @@ class GoogleAIStudioService:
                 time.sleep(0.2)
             time.sleep(0.02)
 
-    def start_services(self):
+    def start_services(self) -> None:
         """
         Starts the reasoning and TTS services in separate threads.
         """
@@ -103,18 +103,17 @@ class GoogleAIStudioService:
             print(e.__traceback__)
             raise
 
-        try:
-            if self.verbose >= 2:
-                print('Starting TTS service thread...')
-            # if there are no threads remaining with daemon=False, the main thread will exit
-            tts_thread = threading.Thread(target=self.run_tts_service, name='tts_service', daemon=True)
-            tts_thread.start()
-            if self.verbose >= 1:
-                print('TTS service thread started.')
-        except Exception as e:
-            print(f'Error starting TTS service thread:')
-            print(e)
-            print(e.__traceback__)
-            raise
-
-        return reasoning_thread, tts_thread
+        if self.use_tts_service:
+            try:
+                if self.verbose >= 2:
+                    print('Starting TTS service thread...')
+                # if there are no threads remaining with daemon=False, the main thread will exit
+                tts_thread = threading.Thread(target=self.run_tts_service, name='tts_service', daemon=True)
+                tts_thread.start()
+                if self.verbose >= 1:
+                    print('TTS service thread started.')
+            except Exception as e:
+                print(f'Error starting TTS service thread:')
+                print(e)
+                print(e.__traceback__)
+                raise
