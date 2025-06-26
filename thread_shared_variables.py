@@ -13,8 +13,8 @@ class SharedVariableManager:
         # Locks for thread safety
         self.reasoning_requests_lock = threading.Lock()
         self.tts_requests_lock = threading.Lock()
-        self.function_call_responses_lock = threading.Lock()
-        self.audio_responses_lock = threading.Lock()
+        self.functions_to_call_lock = threading.Lock()
+        self.audio_to_play_lock = threading.Lock()
         self.received_ethernet_data_lock = threading.Lock()
 
     def add_to(self, queue_name: str, value) -> None:
