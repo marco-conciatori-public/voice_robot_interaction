@@ -1,9 +1,11 @@
+import json
 import time
 import socket
 import threading
 
 import args
 import global_constants as gc
+
 
 class EthernetClient:
     def __init__(self, shared_variable_manager, **kwargs):
@@ -31,6 +33,35 @@ class EthernetClient:
         except Exception as e:
             print(f'Error in ethernet client send_data:\n\t{e}\n\t{e.__traceback__}')
 
+    def send_function_call(self, function_call) -> None:
+        """
+        Sends a function call to the server.
+        :param function_call: The function call to send, which should be a string representation.
+        """
+        try:
+            # Convert the FunctionCall object to a dictionary
+            # The 'name' attribute is a string, 'args' is a dictionary
+            # Adjust based on the exact structure if it differs slightly
+            data_to_send = {
+                "name": function_call.name,
+                "args": function_call.args,
+            }
+
+            # Serialize the dictionary to a JSON string
+            json_string = json.dumps(data_to_send)
+
+            # Encode the JSON string to bytes (e.g., UTF-8)
+            message_to_send = json_string.encode('utf-8')
+
+            # Send the length of the message first (important for reliable reception)
+            # This is important for the receiver to know how much data to expect for one message.
+            length_prefix = len(message_to_send).to_bytes(length=4, byteorder='big')  # 4 bytes, big-endian
+
+            self.socket.sendall(length_prefix + message_to_send)
+            print(f"Client sent: {json_string}")
+        except Exception as e:
+            print(f'Error in ethernet client send_function_call:\n\t{e}\n\t{e.__traceback__}')
+
     def receive_data(self):
         try:
             data = self.socket.recv(1024)
@@ -47,15 +78,6 @@ class EthernetClient:
             self.socket.close()
             print("Connection closed.")
 
-    def receiver(self) :
-        if self.socket:
-            while True:
-                decoded_data = self.receive_data()
-                if decoded_data is not None:
-                    self.shared_variable_manager.add_to(queue_name='received_ethernet_data', value=decoded_data)
-                else:
-                    time.sleep(0.3)
-
     def sender(self):
         if self.socket:
             while True:
@@ -64,8 +86,17 @@ class EthernetClient:
                     time.sleep(0.3)
                     continue
                 else:
-                    self.send_data(message_to_send)
+                    self.send_function_call(message_to_send)
                     time.sleep(0.01)
+
+    def receiver(self) :
+        if self.socket:
+            while True:
+                decoded_data = self.receive_data()
+                if decoded_data is not None:
+                    self.shared_variable_manager.add_to(queue_name='received_ethernet_data', value=decoded_data)
+                else:
+                    time.sleep(0.3)
 
     def start(self):
         self.connect()
