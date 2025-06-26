@@ -58,12 +58,8 @@ class EthernetClient:
 
     def sender(self):
         if self.socket:
-            counter = 0
             while True:
-                time.sleep(5)
-                message_to_send = f'Message {counter} from client'
-                counter += 1
-                # message_to_send = self.shared_variable_manager.pop_from(queue_name='functions_to_call')
+                message_to_send = self.shared_variable_manager.pop_from(queue_name='functions_to_call')
                 if message_to_send is None:
                     time.sleep(0.3)
                     continue
