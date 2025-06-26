@@ -2,6 +2,8 @@ verbose: 0
 # api key for google ai studio
 api_key_file_path: /home/jetson/GIT/voice_robot_interaction/google_ai_studio/gemini_api_key.txt
 
+use_tts_service: False
+
 # parameters for reasoning (reasoning_service)
 reasoning_parameters:
   model_name: gemini-2.0-flash

@@ -26,6 +26,7 @@ class GoogleAIStudioService:
         self.tools = types.Tool(function_declarations=function_declarations.function_list)
         self.config = types.GenerateContentConfig(tools=[self.tools])
         self.reasoning_parameters = parameters['reasoning_parameters']
+        self.use_tts_service = parameters['use_tts_service']
         self.tts_parameters = parameters['tts_parameters']
 
     def run_reasoning_service(self) -> None:
@@ -49,7 +50,8 @@ class GoogleAIStudioService:
                             value=function_call_response,
                         )
                     if textual_response is not None:
-                        self.shared_variable_manager.add_to(queue_name='tts_requests', value=textual_response)
+                        if self.use_tts_service:
+                            self.shared_variable_manager.add_to(queue_name='tts_requests', value=textual_response)
                 except Exception as e:
                     print(f'Error in reasoning service:\n\t{e}\n\t{e.__traceback__}')
             else:
