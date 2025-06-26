@@ -6,6 +6,7 @@ import global_constants as gc
 from google_ai_studio import service_interface
 from thread_shared_variables import SharedVariableManager
 from microphone.microphone_listener import MicrophoneListener
+from ethernet_connection.ethernet_client import EthernetClient
 
 
 def main_thread(**kwargs):
@@ -32,6 +33,13 @@ def main_thread(**kwargs):
         verbose=verbose,
     )
     microphone_listener.start_listening()
+
+    # Initialize the Ethernet client
+    ethernet_client = EthernetClient(
+        shared_variable_manager=shared_variable_manager,
+        verbose=verbose,
+    )
+    ethernet_client.start()
 
     while True:
         function_call = shared_variable_manager.pop_from(queue_name='functions_to_call')
