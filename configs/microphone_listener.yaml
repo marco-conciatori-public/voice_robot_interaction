@@ -12,7 +12,7 @@ product_id: 0x0018
 # (in seconds)
 max_silence_duration: 2
 # recordings shorter than this duration (seconds) will be discarded
-min_sentence_duration: 1.5
+min_sentence_duration: 2
 
 # whether to save audio files recorded by the microphone listener
 save_file: False
