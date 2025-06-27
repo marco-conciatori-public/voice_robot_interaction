@@ -52,6 +52,8 @@ class GoogleAIStudioService:
                     if textual_response is not None:
                         if self.use_tts_service:
                             self.shared_variable_manager.add_to(queue_name='tts_requests', value=textual_response)
+                        else:
+                            print(textual_response)
                 except Exception as e:
                     print(f'Error in reasoning service:\n\t{e}\n\t{e.__traceback__}')
             else:
