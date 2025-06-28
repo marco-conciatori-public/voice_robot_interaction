@@ -25,11 +25,12 @@ class EthernetClient:
 
     def connect(self) -> None:
         connection_established = False
+        print('Starting Ethernet client...')
         while not connection_established:
             try:
                 self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 self.socket.connect((self.host, self.port))
-                print(f'Connected to server {self.host}:{self.port}')
+                print(f'\tConnected to server {self.host}:{self.port}')
                 connection_established = True
             except socket.error as e:
                 utils.print_exception(exception=e, message='Error connecting to server')
@@ -111,7 +112,6 @@ class EthernetClient:
                     time.sleep(0.3)
 
     def start(self):
-        print('Starting Ethernet client...')
         self.connect()
         # Start the receiver and sender threads
         receiver_thread = threading.Thread(target=self.receiver, name='ethernet_client_receiver')
