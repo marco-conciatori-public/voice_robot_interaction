@@ -16,6 +16,22 @@ function_list = [
         }
     },
     {
+        "name": "set_arm_motors_state",
+        "description": "Activates or deactivates the motors that control of robot's arm. When active is True, the "
+                       "motors are active and can move the arm, but external forces can't move the arm. When active is"
+                       " False, the motors are inactive and can't move the arm, but external forces can move the arm.",
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "active": {
+                    "type": "boolean",
+                    "description": "True to activate the arm's motors, False to deactivate them."
+                }
+            },
+            "required": ["rigid"]
+        }
+    },
+    {
         "name": "set_arm_joint_angles",
         "description": "Sets the desired angles for the robot's arm joints. There are six joints. You can change all "
                        "of them or only a subset. Angles are expressed in degrees between 0 and 180.",
@@ -66,6 +82,15 @@ function_list = [
         "name": "change_light_effect",
         "description": "Cycles to the next available light effect on the robot's internal lights. If they are off, "
                        "they are turned on with the first effect.",
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {},
+            "required": []
+        }
+    },
+    {
+        "name": "turn_off_lights",
+        "description": "Turns off all internal lights on the robot.",
         "parameters": {
             "type": "OBJECT",
             "properties": {},
