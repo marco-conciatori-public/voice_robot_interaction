@@ -82,15 +82,6 @@ function_list = [
         }
     },
     {
-        "name": "next_sub_mode",
-        "description": "Switches to the next available sub-mode of the current mode.",
-        "parameters": {
-            "type": "OBJECT",
-            "properties": {},
-            "required": []
-        }
-    },
-    {
         "name": "set_target",
         "description": "Set a target for the robot from a predefined list. The robot will use an object detection "
                        "model to find this target.",
