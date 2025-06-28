@@ -15,26 +15,31 @@ class EthernetClient:
         :param shared_variable_manager: instance of SharedVariableManager to manage shared variables.
         :param host: The hostname or IP address of the server to connect to.
         :param port: The port number on which the server is listening.
+        :param verbose: Verbosity level for logging.
         """
         parameters = args.import_args(yaml_path=gc.CONFIG_FOLDER_PATH + 'ethernet_client.yaml', **kwargs)
         self.shared_variable_manager = shared_variable_manager
         self.host = parameters['host']
         self.port = parameters['port']
         self.retry_interval = parameters['retry_interval']
+        self.verbose = parameters['verbose']
         self.socket = None
 
     def connect(self) -> None:
         connection_established = False
-        print('Starting Ethernet client...')
+        if self.verbose >= 1:
+            print('Starting Ethernet client...')
         while not connection_established:
             try:
                 self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 self.socket.connect((self.host, self.port))
-                print(f'\tConnected to server {self.host}:{self.port}')
+                if self.verbose >= 1:
+                    print(f'\tConnected to server {self.host}:{self.port}')
                 connection_established = True
             except socket.error as e:
                 utils.print_exception(exception=e, message='Error connecting to server')
-                print(f'\tConnection failed. Retrying in {self.retry_interval} seconds...')
+                if self.verbose >= 1:
+                    print(f'\tConnection failed. Retrying in {self.retry_interval} seconds...')
                 connection_established = False
             time.sleep(self.retry_interval)
             # TODO: this could be blocking the main thread?
@@ -42,9 +47,10 @@ class EthernetClient:
     def send_data(self, data) -> None:
         try:
             self.socket.sendall(data.encode())
-            print(f'Client sent: {data}')
+            if self.verbose >= 2:
+                print(f'Client sent: {data}')
         except Exception as e:
-            print(f'Error in ethernet client send_data:\n\t{e}\n\t{e.__traceback__}')
+            utils.print_exception(exception=e, message='Error in ethernet client send_data')
 
     def send_function_call(self, function_call) -> None:
         """
@@ -71,25 +77,25 @@ class EthernetClient:
             length_prefix = len(message_to_send).to_bytes(length=4, byteorder='big')  # 4 bytes, big-endian
 
             self.socket.sendall(length_prefix + message_to_send)
-            print(f'Client sent: {json_string}')
         except Exception as e:
-            print(f'Error in ethernet client send_function_call:\n\t{e}\n\t{e.__traceback__}')
+            utils.print_exception(exception=e, message='Error in ethernet client send_function_call')
 
     def receive_data(self):
         try:
             data = self.socket.recv(1024)
             if not data:
-                print('No data received.')
                 return None
-            print(f'Client received: {data.decode()}')
+                if self.verbose >= 2:
+                    print('No data received from server.')
             return data.decode()
         except Exception as e:
-            print(f'Error in ethernet client receive_data:\n\t{e}\n\t{e.__traceback__}')
+            utils.print_exception(exception=e, message='Error in ethernet client receive_data')
 
     def close(self) -> None:
         if self.socket:
             self.socket.close()
-            print('Connection closed.')
+            if self.verbose >= 1:
+                print(f'Connection to {self.host}:{self.port} closed.')
 
     def sender(self):
         if self.socket:
@@ -118,9 +124,11 @@ class EthernetClient:
         sender_thread = threading.Thread(target=self.sender, name='ethernet_client_sender')
 
         receiver_thread.start()
-        print(f'Receiver thread started: "{receiver_thread.name}"')
+        if self.verbose >= 1:
+            print(f'Receiver thread started: "{receiver_thread.name}"')
         sender_thread.start()
-        print(f'Sender thread started: "{sender_thread.name}"')
+        if self.verbose >= 1:
+            print(f'Sender thread started: "{sender_thread.name}"')
 
         # Keep the main thread alive or join the other threads
         receiver_thread.join()
