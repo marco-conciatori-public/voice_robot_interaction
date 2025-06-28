@@ -73,3 +73,10 @@ def save_wave_file(file_path: str, byte_data, channels=1, rate=24000, sample_wid
         wf.writeframes(byte_data)
     if verbose >= 1:
         print(f'Saved audio file to "{file_path}"')
+
+
+def print_exception(exception: Exception, message: str = None) -> None:
+    if message is None:
+        print(f'{message}:\n\t{exception}\n\t{exception.__traceback__}')
+    else:
+        print(f'Error:\n\t{exception}\n\t{exception.__traceback__}')
