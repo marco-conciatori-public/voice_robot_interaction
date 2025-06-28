@@ -76,17 +76,19 @@ class EthernetClient:
             self.socket.sendall(length_prefix + message_to_send)
         except Exception as e:
             utils.print_exception(exception=e, message='Error in ethernet client send_function_call')
+            self.close()
 
     def receive_data(self) -> str:
         try:
             data = self.socket.recv(1024)
             if not data:
-                return None
                 if self.verbose >= 2:
                     print('No data received from server.')
+                self.close()
             return data.decode()
         except Exception as e:
             utils.print_exception(exception=e, message='Error in ethernet client receive_data')
+            self.close()
 
     def close(self) -> None:
         if self.socket:
