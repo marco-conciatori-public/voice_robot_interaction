@@ -130,9 +130,9 @@ class EthernetClient:
             print(f'Sender thread started: "{sender_thread.name}"')
 
         # Keep the main thread alive or join the other threads
-        receiver_thread.join()
-        sender_thread.join()
+        # receiver_thread.join()
+        # sender_thread.join()
         # TODO: this could be blocking the main thread?
         # TODO: is it necessary?
 
-        self.close()
+        # self.close()

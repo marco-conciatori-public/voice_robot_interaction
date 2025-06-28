@@ -1,4 +1,5 @@
 import time
+import threading
 
 import args
 import utils
@@ -34,12 +35,9 @@ def main_thread(**kwargs):
     )
     microphone_listener.start_listening()
 
-    # Initialize the Ethernet client
-    ethernet_client = EthernetClient(
-        shared_variable_manager=shared_variable_manager,
-        verbose=verbose,
-    )
-    ethernet_client.start()
+    # Initialize and start Ethernet client
+    ethernet_client_thread = threading.Thread(target=keep_restarting_ethernet_client, name='ethernet_client')
+    ethernet_client_thread.start()
 
     while True:
         function_call = shared_variable_manager.pop_from(queue_name='functions_to_call')
@@ -62,6 +60,23 @@ def main_thread(**kwargs):
         if function_call is None and audio_to_play is None:
             time.sleep(0.2)
         time.sleep(0.05)
+
+
+def keep_restarting_ethernet_client(shared_variable_manager: SharedVariableManager, verbose: int = 0):
+    """
+    Continuously attempts to restart the Ethernet client if it is not running.
+    """
+    ethernet_client = None
+    while ethernet_client is None:
+        try:
+            ethernet_client = EthernetClient(
+                shared_variable_manager=shared_variable_manager,
+                verbose=verbose,
+            )
+            ethernet_client.start()
+        except Exception as e:
+            utils.print_exception(exception=e, message='Ethernet client failed to start')
+        time.sleep(10)
 
 
 if __name__ == '__main__':
