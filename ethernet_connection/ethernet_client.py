@@ -15,6 +15,7 @@ class EthernetClient:
         :param shared_variable_manager: instance of SharedVariableManager to manage shared variables.
         :param host: The hostname or IP address of the server to connect to.
         :param port: The port number on which the server is listening.
+        :param retry_interval: Time in seconds to wait before retrying connection if it fails.
         :param verbose: Verbosity level for logging.
         """
         parameters = args.import_args(yaml_path=gc.CONFIG_FOLDER_PATH + 'ethernet_client.yaml', **kwargs)
@@ -65,22 +66,18 @@ class EthernetClient:
                 'name': function_call.name,
                 'args': function_call.args,
             }
-
             # Serialize the dictionary to a JSON string
             json_string = json.dumps(data_to_send)
-
             # Encode the JSON string to bytes (e.g., UTF-8)
             message_to_send = json_string.encode('utf-8')
-
             # Send the length of the message first (important for reliable reception)
             # This is important for the receiver to know how much data to expect for one message.
             length_prefix = len(message_to_send).to_bytes(length=4, byteorder='big')  # 4 bytes, big-endian
-
             self.socket.sendall(length_prefix + message_to_send)
         except Exception as e:
             utils.print_exception(exception=e, message='Error in ethernet client send_function_call')
 
-    def receive_data(self):
+    def receive_data(self) -> str:
         try:
             data = self.socket.recv(1024)
             if not data:
