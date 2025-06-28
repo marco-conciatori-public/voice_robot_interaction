@@ -129,11 +129,3 @@ class EthernetClient:
         # TODO: is it necessary?
 
         self.close()
-
-
-if __name__ == "__main__":
-    from thread_shared_variables import SharedVariableManager
-
-    shared_variable_manager = SharedVariableManager(verbose=2)
-    ethernet_client = EthernetClient(shared_variable_manager=shared_variable_manager)
-    ethernet_client.start()
