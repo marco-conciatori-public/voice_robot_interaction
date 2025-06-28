@@ -4,6 +4,7 @@ import socket
 import threading
 
 import args
+import utils
 import global_constants as gc
 
 
@@ -19,17 +20,28 @@ class EthernetClient:
         self.shared_variable_manager = shared_variable_manager
         self.host = parameters['host']
         self.port = parameters['port']
+        self.retry_interval = parameters['retry_interval']
         self.socket = None
 
     def connect(self) -> None:
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket.connect((self.host, self.port))
-        print(f"Connected to server {self.host}:{self.port}")
+        connection_established = False
+        while not connection_established:
+            try:
+                self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self.socket.connect((self.host, self.port))
+                print(f'Connected to server {self.host}:{self.port}')
+                connection_established = True
+            except socket.error as e:
+                utils.print_exception(exception=e, message='Error connecting to server')
+                print(f'\tConnection failed. Retrying in {self.retry_interval} seconds...')
+                connection_established = False
+            time.sleep(self.retry_interval)
+            # TODO: this could be blocking the main thread?
 
     def send_data(self, data) -> None:
         try:
             self.socket.sendall(data.encode())
-            print(f"Client sent: {data}")
+            print(f'Client sent: {data}')
         except Exception as e:
             print(f'Error in ethernet client send_data:\n\t{e}\n\t{e.__traceback__}')
 
@@ -43,8 +55,8 @@ class EthernetClient:
             # The 'name' attribute is a string, 'args' is a dictionary
             # Adjust based on the exact structure if it differs slightly
             data_to_send = {
-                "name": function_call.name,
-                "args": function_call.args,
+                'name': function_call.name,
+                'args': function_call.args,
             }
 
             # Serialize the dictionary to a JSON string
@@ -58,7 +70,7 @@ class EthernetClient:
             length_prefix = len(message_to_send).to_bytes(length=4, byteorder='big')  # 4 bytes, big-endian
 
             self.socket.sendall(length_prefix + message_to_send)
-            print(f"Client sent: {json_string}")
+            print(f'Client sent: {json_string}')
         except Exception as e:
             print(f'Error in ethernet client send_function_call:\n\t{e}\n\t{e.__traceback__}')
 
@@ -66,9 +78,9 @@ class EthernetClient:
         try:
             data = self.socket.recv(1024)
             if not data:
-                print("No data received.")
+                print('No data received.')
                 return None
-            print(f"Client received: {data.decode()}")
+            print(f'Client received: {data.decode()}')
             return data.decode()
         except Exception as e:
             print(f'Error in ethernet client receive_data:\n\t{e}\n\t{e.__traceback__}')
@@ -76,7 +88,7 @@ class EthernetClient:
     def close(self) -> None:
         if self.socket:
             self.socket.close()
-            print("Connection closed.")
+            print('Connection closed.')
 
     def sender(self):
         if self.socket:
@@ -99,9 +111,9 @@ class EthernetClient:
                     time.sleep(0.3)
 
     def start(self):
+        print('Starting Ethernet client...')
         self.connect()
         # Start the receiver and sender threads
-        print('Starting Ethernet client threads...')
         receiver_thread = threading.Thread(target=self.receiver, name='ethernet_client_receiver')
         sender_thread = threading.Thread(target=self.sender, name='ethernet_client_sender')
 
@@ -113,6 +125,8 @@ class EthernetClient:
         # Keep the main thread alive or join the other threads
         receiver_thread.join()
         sender_thread.join()
+        # TODO: this could be blocking the main thread?
+        # TODO: is it necessary?
 
         self.close()
 
