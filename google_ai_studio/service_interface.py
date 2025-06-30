@@ -37,25 +37,22 @@ class GoogleAIStudioService:
         while True:
             request = self.shared_variable_manager.pop_from(queue_name='reasoning_requests')
             if request is not None:
-                try:
-                    textual_response, function_call_response = reasoning_service.reasoning(
-                        client=self.client,
-                        config=self.config,
-                        **request,
-                        **self.reasoning_parameters,
+                textual_response, function_call_response = reasoning_service.reasoning(
+                    client=self.client,
+                    config=self.config,
+                    **request,
+                    **self.reasoning_parameters,
+                )
+                if function_call_response is not None:
+                    self.shared_variable_manager.add_to(
+                        queue_name='functions_to_call',
+                        value=function_call_response,
                     )
-                    if function_call_response is not None:
-                        self.shared_variable_manager.add_to(
-                            queue_name='functions_to_call',
-                            value=function_call_response,
-                        )
-                    if textual_response is not None:
-                        if self.use_tts_service:
-                            self.shared_variable_manager.add_to(queue_name='tts_requests', value=textual_response)
-                        else:
-                            print(textual_response)
-                except Exception as e:
-                    print(f'Error in reasoning service:\n\t{e}\n\t{e.__traceback__}')
+                if textual_response is not None:
+                    if self.use_tts_service:
+                        self.shared_variable_manager.add_to(queue_name='tts_requests', value=textual_response)
+                    else:
+                        print(textual_response)
             else:
                 time.sleep(0.2)
             time.sleep(0.02)
@@ -76,7 +73,7 @@ class GoogleAIStudioService:
                         verbose=self.verbose,
                     )
                 except Exception as e:
-                    print(f'Error in TTS service:\n\t{e}\n\t{e.__traceback__}')
+                    utils.print_exception(exception=e, message='Error in TTS service')
                     audio_response = None
                 if audio_response is not None:
                     self.shared_variable_manager.add_to(queue_name='audio_to_play', value=audio_response)
@@ -102,9 +99,7 @@ class GoogleAIStudioService:
                 print('Reasoning service thread started.')
 
         except Exception as e:
-            print(f'Error starting reasoning service thread:')
-            print(e)
-            print(e.__traceback__)
+            utils.print_exception(exception=e, message='Error starting reasoning service thread')
             raise
 
         if self.use_tts_service:
@@ -117,7 +112,5 @@ class GoogleAIStudioService:
                 if self.verbose >= 1:
                     print('TTS service thread started.')
             except Exception as e:
-                print(f'Error starting TTS service thread:')
-                print(e)
-                print(e.__traceback__)
+                utils.print_exception(exception=e, message='Error starting TTS service thread')
                 raise
