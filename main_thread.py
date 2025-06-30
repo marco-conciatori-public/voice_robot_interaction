@@ -5,6 +5,7 @@ import args
 import utils
 import global_constants as gc
 from google_ai_studio import service_interface
+from hardware_interaction import HardwareInteraction
 from thread_shared_variables import SharedVariableManager
 from microphone.microphone_listener import MicrophoneListener
 from ethernet_connection.ethernet_client import EthernetClient
@@ -17,6 +18,9 @@ def main_thread(**kwargs):
     """
     parameters = args.import_args(yaml_path=gc.CONFIG_FOLDER_PATH + 'main_thread.yaml', **kwargs)
     verbose = parameters['verbose']
+
+    # Initialize the hardware interaction interface
+    hardware_interaction = HardwareInteraction(verbose=verbose)
 
     # Initialize the shared variable manager
     shared_variable_manager = SharedVariableManager(verbose=verbose)
@@ -38,6 +42,9 @@ def main_thread(**kwargs):
     # Initialize and start Ethernet client
     ethernet_client_thread = threading.Thread(target=keep_restarting_ethernet_client, name='ethernet_client')
     ethernet_client_thread.start()
+
+    # beep to indicate the system is ready
+    hardware_interaction.set_beep(duration=1)
 
     while True:
         function_call = shared_variable_manager.pop_from(queue_name='functions_to_call')
