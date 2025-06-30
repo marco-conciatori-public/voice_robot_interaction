@@ -80,7 +80,7 @@ class MicrophoneListener:
                         num_frames=self.stream_params['chunk_size'],
                         exception_on_overflow=False
                     ))
-            else:
+            else:  # no voice detected
                 if self.audio_stream.is_active():
                     if self.silence_timestamp is None:
                         self.silence_timestamp = time.time()

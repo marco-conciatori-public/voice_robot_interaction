@@ -20,7 +20,6 @@ class GoogleAIStudioService:
 
     def __init__(self, shared_variable_manager, **kwargs):
         parameters = args.import_args(yaml_path=gc.CONFIG_FOLDER_PATH + 'service_interface.yaml', **kwargs)
-        self.verbose = parameters['verbose']
         self.shared_variable_manager = shared_variable_manager
         self.client = genai.Client(api_key=utils.get_api_key(file_path=parameters['api_key_file_path']))
         self.tools = types.Tool(function_declarations=function_declarations.function_list)
@@ -28,6 +27,7 @@ class GoogleAIStudioService:
         self.reasoning_parameters = parameters['reasoning_parameters']
         self.use_tts_service = parameters['use_tts_service']
         self.tts_parameters = parameters['tts_parameters']
+        self.verbose = parameters['verbose']
 
     def run_reasoning_service(self) -> None:
         """
