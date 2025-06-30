@@ -35,6 +35,7 @@ def main_thread(**kwargs):
     # Initialize the microphone listener
     microphone_listener = MicrophoneListener(
         shared_variable_manager=shared_variable_manager,
+        hardware_interaction=hardware_interaction,
         verbose=verbose,
     )
     microphone_listener.start_listening()

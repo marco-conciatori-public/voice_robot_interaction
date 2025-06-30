@@ -12,7 +12,7 @@ import global_constants as gc
 
 
 class MicrophoneListener:
-    def __init__(self, shared_variable_manager, **kwargs):
+    def __init__(self, shared_variable_manager, hardware_interaction, **kwargs):
         """
         Initializes the MicrophoneListener with the specified product and vendor IDs.
         :param shared_variable_manager: instance of SharedVariableManager to manage shared variables.
@@ -23,12 +23,13 @@ class MicrophoneListener:
         :param min_sentence_duration: minimum duration in seconds for a valid recording.
         :param verbose: verbosity level for logging.
         """
-        parameters = args.import_args(yaml_path=gc.CONFIG_FOLDER_PATH + 'microphone_listener.yaml', **kwargs)
-        self.verbose = parameters['verbose']
         self.shared_variable_manager = shared_variable_manager
+        self.hardware_interaction = hardware_interaction
+        parameters = args.import_args(yaml_path=gc.CONFIG_FOLDER_PATH + 'microphone_listener.yaml', **kwargs)
         self.device_index = parameters['device_index']
         self.vendor_id = parameters['vendor_id']
         self.product_id = parameters['product_id']
+        self.verbose = parameters['verbose']
         self.microphone = None
         self.microphone = tuning.find(vid=self.vendor_id, pid=self.product_id)
         if self.microphone:
@@ -76,12 +77,14 @@ class MicrophoneListener:
                 if self.audio_stream.is_stopped():
                     self.start_recording()
                 else:
+                    self.hardware_interaction.rgb_led(red=0, green=255, blue=0)  # Set RGB LED to green
                     self.current_recording.append(self.audio_stream.read(
                         num_frames=self.stream_params['chunk_size'],
                         exception_on_overflow=False
                     ))
             else:  # no voice detected
                 if self.audio_stream.is_active():
+                    self.hardware_interaction.rgb_led(red=255, green=255, blue=0)  # Set RGB LED to orange
                     if self.silence_timestamp is None:
                         self.silence_timestamp = time.time()
                     if (time.time() - self.silence_timestamp) >= self.max_silence_duration:
@@ -93,6 +96,7 @@ class MicrophoneListener:
         """
         Starts recording audio from the microphone.
         """
+        self.hardware_interaction.rgb_led(red=0, green=255, blue=0)  # Set RGB LED to green
         self.current_recording = []
         self.start_recording_timestamp = time.time()
         self.audio_stream.start_stream()
@@ -103,6 +107,7 @@ class MicrophoneListener:
         """
         Stops the current recording and saves the audio data.
         """
+        self.hardware_interaction.rgb_led(red=255, green=0, blue=0)  # Set RGB LED to red
         self.audio_stream.stop_stream()
         if self.verbose >= 2:
             print('No voice detected for a while, stop recording...')
