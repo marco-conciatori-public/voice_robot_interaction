@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 # coding: utf-8
+import warnings
+
 import smbus
 
 import args
@@ -26,7 +28,7 @@ class HardwareInteraction:
         except:
             print('arm_reset I2C error')
 
-    # PWD servo control servo_id: 1-6 (0 controls all servos). Angle: 0-180
+    # PWD servo control servo_id: 1-6 (0 controls all servos). Angle: 0-180 degrees.
     def pwm_servo_write(self, servo_id: int, angle: int) -> None:
         try:
             if servo_id == 0:
@@ -36,19 +38,20 @@ class HardwareInteraction:
         except:
             print('arm_pwm_servo_write I2C error')
 
-    # Turn on the buzzer, the default delay is 0xff (=255), and the buzzer keeps ringing
-    # delay=1~50, the buzzer will be automatically turned off after delay*100 milliseconds after the buzzer is turned
-    # on, and the maximum delay time is 5 seconds.
-    def buzzer_on(self, delay: int = 0xff):
+    # Turn on the buzzer for a specified duration. If duration is 0, turn off the buzzer. Duration: 0.1-5 seconds.
+    # 0.1 and 5 seconds.
+    def set_beep(self, duration: int) -> None:
+        """
+        Set the buzzer to beep for a specified duration.
+        :param duration: Duration in seconds for which the buzzer should beep.
+        """
         try:
-            if delay != 0:
-                self.bus.write_byte_data(self.bus_address, 0x06, delay & 0xff)
+            if duration == 0:
+                self.bus.write_byte_data(self.bus_address, 0x06, 0x00)
+            else:
+                if duration < 0.1 or duration > 5:
+                    raise ValueError(f'Duration must be between 0.1 and 5 seconds. Given: {duration} seconds.')
+                # duration * 10: convert seconds to deciseconds (= 0.1 seconds)
+                self.bus.write_byte_data(self.bus_address, 0x06, duration * 10 & 0xff)
         except:
-            print('arm_buzzer_on I2C error')
-
-    # Turn off the buzzer
-    def buzzer_off(self):
-        try:
-            self.bus.write_byte_data(self.bus_address, 0x06, 0x00)
-        except:
-            print('arm_buzzer_off I2C error')
+            print('set_beep I2C error')
