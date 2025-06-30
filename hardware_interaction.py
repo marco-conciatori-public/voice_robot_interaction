@@ -40,7 +40,7 @@ class HardwareInteraction:
             if delay != 0:
                 self.bus.write_byte_data(self.addr, 0x06, delay & 0xff)
         except:
-            print('Arm_Buzzer_On I2C error')
+            print('arm_buzzer_on I2C error')
 
     # Turn off the buzzer
     def buzzer_off(self):
