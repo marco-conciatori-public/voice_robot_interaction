@@ -53,7 +53,7 @@ def main_thread(**kwargs):
     ethernet_client_thread.start()
 
     # beep to indicate the system is ready
-    hardware_interaction.set_beep(duration=1)
+    hardware_interaction.set_beep(duration=0.5)
 
     while True:
         function_call = shared_variable_manager.pop_from(queue_name='functions_to_call')
