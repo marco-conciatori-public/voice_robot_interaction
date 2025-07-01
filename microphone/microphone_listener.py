@@ -117,7 +117,7 @@ class MicrophoneListener:
         if self.verbose >= 2:
             print('No voice detected for a while, stop recording...')
 
-        if (time.time() - self.start_recording_timestamp) >= self.min_sentence_duration:
+        if (time.time() - self.start_recording_timestamp) >= self.min_sentence_duration + self.max_silence_duration:
             if save_file:
                 utils.save_wave_file(
                     file_path=f'{gc.OUTPUT_FOLDER_PATH}recording_{int(time.time())}.wav',
