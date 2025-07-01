@@ -68,6 +68,7 @@ class GoogleAIStudioService:
                 except Exception as e:
                     utils.print_exception(exception=e, message='Error in TTS service')
                     audio_response = None
+                    print(request)
                 if audio_response is not None:
                     self.shared_variable_manager.add_to(queue_name='audio_to_play', value=audio_response)
             else:
@@ -106,4 +107,5 @@ class GoogleAIStudioService:
                     print('TTS service thread started.')
             except Exception as e:
                 utils.print_exception(exception=e, message='Error starting TTS service thread')
-                raise
+                self.use_tts_service = False
+                print('TTS service disabled due to an error. From now on, natural language responses will be printed.')
