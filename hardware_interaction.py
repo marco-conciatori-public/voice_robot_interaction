@@ -50,7 +50,8 @@ class HardwareInteraction:
             else:
                 if duration < 0.1 or duration > 5:
                     raise ValueError(f'Duration must be between 0.1 and 5 seconds. Given: {duration} seconds.')
-                # duration * 10: convert seconds to deciseconds (= 0.1 seconds)
-                self.bus.write_byte_data(self.bus_address, 0x06, duration * 10 & 0xff)
+                # convert seconds to deciseconds (= 0.1 seconds), and convert to INT
+                duration = int(duration * 10)
+                self.bus.write_byte_data(self.bus_address, 0x06, duration & 0xff)
         except:
             print('set_beep I2C error')
