@@ -4,58 +4,87 @@ from google import genai
 from google.genai import types
 
 
-def reasoning(model_name: str,
-              audio_bytes,
-              client: genai.Client,
-              prompt_template: str = None,
-              config=None,
-              mime_type='audio/wav') -> tuple:
+class ReasoningService:
     """
-    Sends a text prompt to the Google AI Studio LLM and returns the response.
-
-    Args:
-        model_name: str: The model to use for generating the response.
-        audio_bytes: The prompt to send to the LLM (audio).
-        prompt_template: str: The template for the prompt, which can include instructions or context.
-        client: genai.Client: The Google AI Studio client to use for generating the response.
-        config (types.GenerateContentConfig): Configuration for the content generation, including tools.
-        mime_type (str): The MIME type of the audio data, default is 'audio/wav'.
-
-    Returns:
-        tuple: A tuple containing:
-            - is_function_call (bool): Indicates if the response is a function call.
-            - response: The response from the LLM, which can be either text or a function call with parameters, or an
-             error message if an exception occurs.
+    This class provides a service for reasoning with the Google AI Studio LLM.
     """
-    try:
-        if prompt_template is None:
-            audio_input = [types.Part.from_bytes(data=audio_bytes, mime_type=mime_type)]
-        else:
-            audio_input = [prompt_template, types.Part.from_bytes(data=audio_bytes, mime_type=mime_type)]
-        if config is None:
-            response = client.models.generate_content(
-                model=model_name,
-                contents=audio_input,
-            )
-        else:
-            response = client.models.generate_content(
-                model=model_name,
-                contents=audio_input,
-                config=config,
-            )
+    def __init__(self,
+                 client: genai.Client,
+                 model_name: str,
+                 tools: types.Tool = None,
+                 prompt_template: str = None,
+                 remember_history: bool = False,
+                 mime_type: str = 'audio/wav',
+                 ):
+        """
+        Initializes the ReasoningService with the Google AI Studio client, model name, and optional configuration.
+        :param client: genai.Client: The Google AI Studio client to use for generating responses.
+        :param model_name: str: The model to use for generating the response.
+        :param tools: types.Tool: Optional tools to use for the reasoning process, default is None.
+        :param prompt_template: str: The template for the prompt, which can include instructions or context.
+        :param remember_history: bool: Whether to remember the history of interactions, default is False.
+        :param mime_type: str: The MIME type of the audio data, default is 'audio/wav'.
+        """
 
-        text = None
-        function_call = None
-        for part in response.candidates[0].content.parts:
-            if part.text:
-                text = part.text
-            elif part.function_call:
-                function_call = part.function_call
+        self.client = client
+        self.model_name = model_name
+        self.tools = tools if tools is not None else types.Tool(function_declarations=[])
+        self.config = types.GenerateContentConfig(tools=[self.tools])
+        self.prompt_template = prompt_template
+        self.remember_history = remember_history
+        self.mime_type = mime_type
+
+        if self.remember_history:
+            self.chat = client.chats.create(model=self.model_name, config=self.config)
+
+    def reasoning(self, audio_bytes) -> tuple:
+        """
+        Sends a text prompt to the Google AI Studio LLM and returns the response.
+
+        Args:
+            audio_bytes: The prompt to send to the LLM (audio).
+
+        Returns:
+            tuple: A tuple containing:
+                - is_function_call (bool): Indicates if the response is a function call.
+                - response: The response from the LLM, which can be either text or a function call with parameters, or
+                 an error message if an exception occurs.
+        """
+        try:
+            if self.prompt_template is None:
+                audio_input = [types.Part.from_bytes(data=audio_bytes, mime_type=self.mime_type)]
             else:
-                warnings.warn(f'Unexpected part type in response:\n\t{part}')
-        # TODO: can the response contain multiple function calls?
+                audio_input = [self.prompt_template, types.Part.from_bytes(data=audio_bytes, mime_type=self.mime_type)]
 
-        return text, function_call
+            if self.remember_history:
+                if self.chat is None:
+                    raise ValueError("Chat history is enabled but chat object is not initialized.")
+                response = self.chat.send_message(audio_input)
+            else:  # without history
+                if self.config is None:  # without config
+                    response = self.client.models.generate_content(
+                        model=self.model_name,
+                        contents=audio_input,
+                    )
+                else:  # with config
+                    response = self.client.models.generate_content(
+                        model=self.model_name,
+                        contents=audio_input,
+                        config=self.config,
+                    )
 
-    except Exception as e:
-        return False, f'An error occurred:\n{e}'
+            text = None
+            function_call = None
+            for part in response.candidates[0].content.parts:
+                if part.text:
+                    text = part.text
+                elif part.function_call:
+                    function_call = part.function_call
+                else:
+                    warnings.warn(f'Unexpected part type in response:\n\t{part}')
+            # TODO: can the response contain multiple function calls?
+
+            return text, function_call
+
+        except Exception as e:
+            return False, f'An error occurred:\n{e}'

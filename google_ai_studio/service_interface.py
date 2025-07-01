@@ -8,8 +8,8 @@ import args
 import utils
 import global_constants as gc
 from google_ai_studio import tts_service
-from google_ai_studio import reasoning_service
 from google_ai_studio import function_declarations
+from google_ai_studio.reasoning_service import ReasoningService
 
 
 class GoogleAIStudioService:
@@ -23,11 +23,12 @@ class GoogleAIStudioService:
         self.shared_variable_manager = shared_variable_manager
         self.client = genai.Client(api_key=utils.get_api_key(file_path=parameters['api_key_file_path']))
         self.tools = types.Tool(function_declarations=function_declarations.function_list)
-        self.config = types.GenerateContentConfig(tools=[self.tools])
         self.reasoning_parameters = parameters['reasoning_parameters']
         self.use_tts_service = parameters['use_tts_service']
         self.tts_parameters = parameters['tts_parameters']
         self.verbose = parameters['verbose']
+
+        self.reasoning_service = ReasoningService(client=self.client, tools=self.tools, **self.reasoning_parameters)
 
     def run_reasoning_service(self) -> None:
         """
@@ -37,17 +38,9 @@ class GoogleAIStudioService:
         while True:
             request = self.shared_variable_manager.pop_from(queue_name='reasoning_requests')
             if request is not None:
-                textual_response, function_call_response = reasoning_service.reasoning(
-                    client=self.client,
-                    config=self.config,
-                    **request,
-                    **self.reasoning_parameters,
-                )
+                textual_response, function_call_response = self.reasoning_service.reasoning(**request)
                 if function_call_response is not None:
-                    self.shared_variable_manager.add_to(
-                        queue_name='functions_to_call',
-                        value=function_call_response,
-                    )
+                    self.shared_variable_manager.add_to(queue_name='functions_to_call', value=function_call_response)
                 if textual_response is not None:
                     if self.use_tts_service:
                         self.shared_variable_manager.add_to(queue_name='tts_requests', value=textual_response)
