@@ -40,8 +40,16 @@ def main_thread(**kwargs):
     )
     microphone_listener.start_listening()
 
+    ethernet_client_kwargs = {
+        'shared_variable_manager': shared_variable_manager,
+        'verbose': verbose,
+    }
     # Initialize and start Ethernet client
-    ethernet_client_thread = threading.Thread(target=keep_restarting_ethernet_client, name='ethernet_client')
+    ethernet_client_thread = threading.Thread(
+        target=keep_restarting_ethernet_client,
+        name='ethernet_client',
+        kwargs=ethernet_client_kwargs,
+    )
     ethernet_client_thread.start()
 
     # beep to indicate the system is ready
