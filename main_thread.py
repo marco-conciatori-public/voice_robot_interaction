@@ -56,11 +56,6 @@ def main_thread(**kwargs):
     hardware_interaction.set_beep(duration=0.5)
 
     while True:
-        function_call = shared_variable_manager.pop_from(queue_name='functions_to_call')
-        if function_call is not None:
-            if verbose >= 2:
-                print(f'Function call detected:\n\t{function_call.name}{function_call.args}')
-            # TODO: Implement the function execution logic
         audio_to_play = shared_variable_manager.pop_from(queue_name='audio_to_play')
         if audio_to_play is not None:
             if verbose >= 2:
@@ -71,7 +66,7 @@ def main_thread(**kwargs):
                 channels=1,
                 dtype='int16',
             )
-        if function_call is None and audio_to_play is None:
+        else:
             time.sleep(0.2)
         time.sleep(0.05)
 
