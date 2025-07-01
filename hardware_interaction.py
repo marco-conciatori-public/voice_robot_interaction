@@ -39,7 +39,7 @@ class HardwareInteraction:
 
     # Turn on the buzzer for a specified duration. If duration is 0, turn off the buzzer. Duration: 0.1-5 seconds.
     # 0.1 and 5 seconds.
-    def set_beep(self, duration: int) -> None:
+    def set_beep(self, duration: float) -> None:
         """
         Set the buzzer to beep for a specified duration.
         :param duration: Duration in seconds for which the buzzer should beep.
