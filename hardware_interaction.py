@@ -7,10 +7,11 @@ import global_constants as gc
 
 
 class HardwareInteraction:
-    def __init__(self):
-        parameters = args.import_args(yaml_path=gc.CONFIG_FOLDER_PATH + 'hardware_interaction.yaml')
+    def __init__(self, **kwargs):
+        parameters = args.import_args(yaml_path=gc.CONFIG_FOLDER_PATH + 'hardware_interaction.yaml', **kwargs)
         self.bus_address = parameters['bus_address']
         self.bus = smbus.SMBus(parameters['bus_number'])
+        self.verbose = parameters['verbose']
 
     # Set the specified color of the RGB light. Red, green, and blue: 0-255
     def rgb_led(self, red: int, green: int, blue: int) -> None:
