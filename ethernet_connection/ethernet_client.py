@@ -66,6 +66,7 @@ class EthernetClient:
                 'name': function_call.name,
                 'args': function_call.args,
             }
+            print(f'Sending function call: {data_to_send}')
             # Serialize the dictionary to a JSON string
             json_string = json.dumps(data_to_send)
             # Encode the JSON string to bytes (e.g., UTF-8)
