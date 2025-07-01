@@ -101,6 +101,7 @@ class EthernetClient:
         if self.socket:
             while True:
                 message_to_send = self.shared_variable_manager.pop_from(queue_name='functions_to_call')
+                print(f'Popped message to send: {message_to_send}')
                 if message_to_send is None:
                     time.sleep(0.3)
                     continue
