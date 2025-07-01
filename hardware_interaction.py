@@ -10,7 +10,7 @@ class HardwareInteraction:
     def __init__(self, **kwargs):
         parameters = args.import_args(yaml_path=gc.CONFIG_FOLDER_PATH + 'hardware_interaction.yaml', **kwargs)
         self.bus_address = parameters['bus_address']
-        self.bus = smbus.SMBus(parameters['bus_number'])
+        self.bus = smbus.SMBus(parameters['smbus_id'])
         self.verbose = parameters['verbose']
 
     # Set the specified color of the RGB light. Red, green, and blue: 0-255
