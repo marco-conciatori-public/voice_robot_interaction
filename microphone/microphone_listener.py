@@ -47,6 +47,7 @@ class MicrophoneListener:
         self.audio_stream = None
         self.stream_params = parameters['stream_params']
         self.save_file = parameters['save_file']
+        self.led_intensity = parameters['led_intensity']
 
     def listen(self):
         """
@@ -77,14 +78,16 @@ class MicrophoneListener:
                 if self.audio_stream.is_stopped():
                     self.start_recording()
                 else:
-                    self.hardware_interaction.rgb_led(red=0, green=255, blue=0)  # Set RGB LED to green
+                    # Set RGB LED to green
+                    self.hardware_interaction.rgb_led(red=0, green=self.led_intensity, blue=0)
                     self.current_recording.append(self.audio_stream.read(
                         num_frames=self.stream_params['chunk_size'],
                         exception_on_overflow=False
                     ))
             else:  # no voice detected
                 if self.audio_stream.is_active():
-                    self.hardware_interaction.rgb_led(red=255, green=255, blue=0)  # Set RGB LED to orange
+                    # Set RGB LED to orange
+                    self.hardware_interaction.rgb_led(red=self.led_intensity, green=self.led_intensity, blue=0)
                     if self.silence_timestamp is None:
                         self.silence_timestamp = time.time()
                     if (time.time() - self.silence_timestamp) >= self.max_silence_duration:
@@ -96,7 +99,8 @@ class MicrophoneListener:
         """
         Starts recording audio from the microphone.
         """
-        self.hardware_interaction.rgb_led(red=0, green=255, blue=0)  # Set RGB LED to green
+        # Set RGB LED to green
+        self.hardware_interaction.rgb_led(red=0, green=self.led_intensity, blue=0)
         self.current_recording = []
         self.start_recording_timestamp = time.time()
         self.audio_stream.start_stream()
@@ -107,7 +111,8 @@ class MicrophoneListener:
         """
         Stops the current recording and saves the audio data.
         """
-        self.hardware_interaction.rgb_led(red=255, green=0, blue=0)  # Set RGB LED to red
+        # Set RGB LED to red
+        self.hardware_interaction.rgb_led(red=self.led_intensity, green=0, blue=0)
         self.audio_stream.stop_stream()
         if self.verbose >= 2:
             print('No voice detected for a while, stop recording...')
