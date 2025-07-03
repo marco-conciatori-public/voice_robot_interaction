@@ -52,6 +52,7 @@ class EthernetClient:
                 print(f'Client sent: {data}')
         except Exception as e:
             utils.print_exception(exception=e, message='Error in ethernet client send_data')
+            self.close()
 
     def send_function_call(self, function_call) -> None:
         """

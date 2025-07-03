@@ -84,7 +84,7 @@ def keep_restarting_ethernet_client(shared_variable_manager: SharedVariableManag
             )
             ethernet_client.start()
         except Exception as e:
-            utils.print_exception(exception=e, message='Ethernet client failed to start')
+            utils.print_exception(exception=e, message='Ethernet client failed. Retrying in 10 seconds...')
         time.sleep(10)
 
 
