@@ -132,5 +132,8 @@ class EthernetClient:
             print(f'Sender thread started: "{sender_thread.name}"')
 
         receiver_thread.join()
+        print('receiver thread finished.')
         sender_thread.join()
+        print('sender thread finished.')
         self.close()
+        print('Ethernet client stopped.')
