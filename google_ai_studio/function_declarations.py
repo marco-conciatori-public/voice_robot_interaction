@@ -63,16 +63,6 @@ function_list = [
         }
     },
     {
-        "name": "change_light_effect",
-        "description": "Cycles to the next available light effect on the robot's internal lights. If they are off, "
-                       "they are turned on with the first effect.",
-        "parameters": {
-            "type": "OBJECT",
-            "properties": {},
-            "required": []
-        }
-    },
-    {
         "name": "next_mode",
         "description": "Switches the robot to the next main operating mode in its predefined sequence.",
         "parameters": {
@@ -99,7 +89,8 @@ function_list = [
     },
     {
         "name": "increase_speed_coefficient",
-        "description": "Slightly increases the robot's speed coefficient. This affects all movements.",
+        "description": "Slightly increases the robot's speed coefficient. This affects all movements and increases the "
+                       "maximum allowed speed.",
         "parameters": {
             "type": "OBJECT",
             "properties": {},
@@ -108,16 +99,8 @@ function_list = [
     },
     {
         "name": "decrease_speed_coefficient",
-        "description": "Slightly decreases the robot's speed coefficient. This affects all movements.",
-        "parameters": {
-            "type": "OBJECT",
-            "properties": {},
-            "required": []
-        }
-    },
-    {
-        "name": "toggle_lidar_listener",
-        "description": "Start or stop reading and using data from the LIDAR sensor.",
+        "description": "Slightly decreases the robot's speed coefficient. This affects all movements and decreases the "
+                       "maximum allowed speed.",
         "parameters": {
             "type": "OBJECT",
             "properties": {},
