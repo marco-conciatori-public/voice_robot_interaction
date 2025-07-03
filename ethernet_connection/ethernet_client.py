@@ -97,26 +97,26 @@ class EthernetClient:
             self.socket.close()
             if self.verbose >= 1:
                 print(f'Connection to {self.host}:{self.port} closed.')
+            self.socket = None
+            #
 
     def sender(self):
-        if self.socket:
-            while True:
-                message_to_send = self.shared_variable_manager.pop_from(queue_name='functions_to_call')
-                if message_to_send is None:
-                    time.sleep(0.3)
-                    continue
-                else:
-                    self.send_function_call(message_to_send)
-                    time.sleep(0.01)
+        while self.socket:
+            message_to_send = self.shared_variable_manager.pop_from(queue_name='functions_to_call')
+            if message_to_send is None:
+                time.sleep(0.3)
+                continue
+            else:
+                self.send_function_call(message_to_send)
+                time.sleep(0.01)
 
     def receiver(self) :
-        if self.socket:
-            while True:
-                decoded_data = self.receive_data()
-                if decoded_data is not None:
-                    self.shared_variable_manager.add_to(queue_name='received_ethernet_data', value=decoded_data)
-                else:
-                    time.sleep(0.3)
+        while self.socket:
+            decoded_data = self.receive_data()
+            if decoded_data is not None:
+                self.shared_variable_manager.add_to(queue_name='received_ethernet_data', value=decoded_data)
+            else:
+                time.sleep(0.3)
 
     def start(self):
         self.connect()
@@ -131,10 +131,6 @@ class EthernetClient:
         if self.verbose >= 1:
             print(f'Sender thread started: "{sender_thread.name}"')
 
-        # Keep the main thread alive or join the other threads
-        # receiver_thread.join()
-        # sender_thread.join()
-        # TODO: this could be blocking the main thread?
-        # TODO: is it necessary?
-
-        # self.close()
+        receiver_thread.join()
+        sender_thread.join()
+        self.close()
