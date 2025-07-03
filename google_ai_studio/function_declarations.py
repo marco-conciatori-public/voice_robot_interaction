@@ -108,12 +108,19 @@ function_list = [
         }
     },
     {
-        "name": "set_speed",
+        "name": "set_movement_with_duration",
         "description": "Sets the speed for the robot along the X (forward/backward), Y (left/right translation), and Z"
-                       " (rotation) axes.",
+                       " (rotation) axes. The movement will automatically stop after the specified duration.",
         "parameters": {
             "type": "OBJECT",
             "properties": {
+                "duration": {
+                    "type": "number",
+                    "description": "The duration of the movement in seconds. After this time, the robot will stop "
+                                   "moving.",
+                    "minimum": 0.1,
+                    "maximum": 5
+                },
                 "speed_x": {
                     "type": "number",
                     "description": "Move forward (positive value) or move backward (negative value) in the direction "
@@ -136,7 +143,7 @@ function_list = [
                     "maximum": 1
                 }
             },
-            "required": []
+            "required": ["duration"]
         }
     }
 ]
