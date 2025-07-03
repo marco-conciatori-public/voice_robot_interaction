@@ -16,47 +16,48 @@ function_list = [
         }
     },
     {
-        "name": "set_arm_joint_angles",
-        "description": "Sets the desired angles for the robot's arm joints. There are six joints. You can change all "
-                       "of them or only a subset. Angles are expressed in degrees between 0 and 180.",
+        "name": "move_arm",
+        "description": "Moves the point of the arm (gripper) along the specified axes.",
         "parameters": {
             "type": "OBJECT",
             "properties": {
-                "base_rotation": {
-                    "type": "integer",
-                    "description": "The rotation angle of the arm's base.",
-                    "minimum": 0,
-                    "maximum": 180
+                "x_axis": {
+                    "type": "number",
+                    "description": "Movement along the X-axis (left/right).",
+                    "minimum": -1,
+                    "maximum": 1
                 },
-                "base_inclination": {
-                    "type": "integer",
-                    "description": "The inclination (up/down) angle of the arm's base.",
-                    "minimum": 0,
-                    "maximum": 180
+                "y_axis": {
+                    "type": "number",
+                    "description": "Movement along the Y-axis (forward/backward).",
+                    "minimum": -1,
+                    "maximum": 1
                 },
-                "elbow_1_inclination": {
-                    "type": "integer",
-                    "description": "The inclination angle of the first elbow joint.",
-                    "minimum": 0,
-                    "maximum": 180
-                },
-                "elbow_2_inclination": {
-                    "type": "integer",
-                    "description": "The inclination angle of the second elbow joint.",
-                    "minimum": 0,
-                    "maximum": 180
-                },
-                "gripper_rotation": {
+                "z_axis": {
+                    "type": "number",
+                    "description": "Movement along the Z-axis (up/down).",
+                    "minimum": -1,
+                    "maximum": 1
+                }
+            },
+            "required": []
+        }
+    },
+    {
+        "name": "control_gripper",
+        "description": "Controls the rotation of the gripper and its open/close state.",
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "rotation": {
                     "type": "integer",
                     "description": "The rotation angle of the gripper.",
                     "minimum": 0,
                     "maximum": 180
                 },
-                "gripper_opening": {
-                    "type": "integer",
-                    "description": "The opening angle of the gripper.",
-                    "minimum": 0,
-                    "maximum": 180
+                "opening": {
+                    "type": "boolean",
+                    "description": "Whether to open (True) or close (False) the gripper.",
                 }
             },
             "required": []
