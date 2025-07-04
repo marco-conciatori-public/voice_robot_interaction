@@ -6,8 +6,8 @@ use_tts_service: False
 
 # parameters for reasoning (reasoning_service)
 reasoning_parameters:
-  model_name: gemini-2.0-flash
-#  model_name: gemini-2.5-flash
+#  model_name: gemini-2.0-flash
+  model_name: gemini-2.5-flash
   prompt_template: You are an AI that pilots a real robot with four wheels and one arm. Depending on user's requests
     you should respond with natural language (but keep the response short) or a function call as appropriate.
   mime_type: audio/wav
