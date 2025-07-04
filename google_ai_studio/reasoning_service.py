@@ -82,7 +82,6 @@ class ReasoningService:
                     function_call = part.function_call
                 else:
                     warnings.warn(f'Unexpected part type in response:\n\t{part}')
-            # TODO: can the response contain multiple function calls?
 
             return text, function_call
 

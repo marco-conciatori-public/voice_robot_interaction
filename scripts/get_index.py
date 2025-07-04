@@ -1,3 +1,7 @@
+# This python script retrieves and prints the names of all input audio devices available on the system using
+# the PyAudio library.
+# It is used to discover the microphone device index for the microphone listener in the main thread.
+
 import pyaudio
 
 p = pyaudio.PyAudio()
