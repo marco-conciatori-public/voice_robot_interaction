@@ -11,7 +11,7 @@ reasoning_parameters:
   prompt_template: You are an AI that pilots a real robot with four wheels and one arm. Depending on user's requests
     you should respond with natural language (but keep the response short) or a function call as appropriate.
   mime_type: audio/wav
-  remember_history: False
+  remember_history: True
 
 # parameters for text-to-speech (tts_service)
 tts_parameters:
