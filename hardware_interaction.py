@@ -3,6 +3,7 @@
 import smbus
 
 import args
+import utils
 import global_constants as gc
 
 
@@ -17,15 +18,15 @@ class HardwareInteraction:
     def rgb_led(self, red: int, green: int, blue: int) -> None:
         try:
             self.bus.write_i2c_block_data(self.bus_address, 0x02, [red & 0xff, green & 0xff, blue & 0xff])
-        except:
-            print('arm_rgb_set I2C error')
+        except Exception as e:
+            utils.print_exception(exception=e, message='arm_rgb_set I2C error')
 
     # Restart the driver board
     def arm_reset(self) -> None:
         try:
             self.bus.write_byte_data(self.bus_address, 0x05, 0x01)
-        except:
-            print('arm_reset I2C error')
+        except Exception as e:
+            utils.print_exception(exception=e, message='arm_reset I2C error')
 
     # PWD servo control servo_id: 1-6 (0 controls all servos). Angle: 0-180 degrees.
     def pwm_servo_write(self, servo_id: int, angle: int) -> None:
@@ -34,8 +35,8 @@ class HardwareInteraction:
                 self.bus.write_byte_data(self.bus_address, 0x57, angle & 0xff)
             else:
                 self.bus.write_byte_data(self.bus_address, 0x50 + servo_id, angle & 0xff)
-        except:
-            print('arm_pwm_servo_write I2C error')
+        except Exception as e:
+            utils.print_exception(exception=e, message='arm_pwm_servo_write I2C error')
 
     # Turn on the buzzer for a specified duration. If duration is 0, turn off the buzzer. Duration: 0.1-5 seconds.
     # 0.1 and 5 seconds.
@@ -53,5 +54,5 @@ class HardwareInteraction:
                 # convert seconds to deciseconds (= 0.1 seconds), and convert to INT
                 duration = int(duration * 10)
                 self.bus.write_byte_data(self.bus_address, 0x06, duration & 0xff)
-        except:
-            print('set_beep I2C error')
+        except Exception as e:
+            utils.print_exception(exception=e, message='set_beep I2C error')
