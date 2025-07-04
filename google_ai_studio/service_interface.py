@@ -44,7 +44,7 @@ class GoogleAIStudioService:
                 if textual_response is not None:
                     if self.use_tts_service:
                         self.shared_variable_manager.add_to(queue_name='tts_requests', value=textual_response)
-                    else:
+                    elif self.verbose >= 1:
                         print(textual_response)
             else:
                 time.sleep(0.2)
@@ -68,7 +68,8 @@ class GoogleAIStudioService:
                 except Exception as e:
                     utils.print_exception(exception=e, message='Error in TTS service')
                     audio_response = None
-                    print(request)
+                    if self.verbose >= 1:
+                        print(request)
                 if audio_response is not None:
                     self.shared_variable_manager.add_to(queue_name='audio_to_play', value=audio_response)
             else:
@@ -108,4 +109,5 @@ class GoogleAIStudioService:
             except Exception as e:
                 utils.print_exception(exception=e, message='Error starting TTS service thread')
                 self.use_tts_service = False
-                print('TTS service disabled due to an error. From now on, natural language responses will be printed.')
+                if self.verbose >= 1:
+                    print('TTS service disabled due to an error. From now on, the responses will be printed.')

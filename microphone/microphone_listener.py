@@ -34,7 +34,7 @@ class MicrophoneListener:
         self.microphone = tuning.find(vid=self.vendor_id, pid=self.product_id)
         if self.microphone:
             if self.verbose >= 1:
-                print('Microphone initialized successfully.')
+                print('Microphone opened.')
         else:
             raise RuntimeError(f'Failed to initialize microphone with VID: {self.vendor_id}, PID: {self.product_id}')
         self.current_recording = None
@@ -53,14 +53,12 @@ class MicrophoneListener:
         """
         Listening to the microphone
         If a voice is detected using self.microphone.is_voice():
-            - start recording using the pyaudio library
+            - start/keep recording using the pyaudio library
         If no voice is detected for self.max_silence_duration seconds:
             - stop recording
             - save the audio data
             - resume listening
         """
-        if self.verbose >= 1:
-            print('Starting to listen to the microphone...')
 
         self.audio_stream = self.pa.open(
             format=self.pa.get_format_from_width(self.stream_params['width']),
@@ -71,6 +69,8 @@ class MicrophoneListener:
             input=True,
             start=False,
         )
+        if self.verbose >= 2:
+            print('Starting to listen to the microphone...')
 
         while True:
             if self.microphone.is_voice():
@@ -104,7 +104,7 @@ class MicrophoneListener:
         self.current_recording = []
         self.start_recording_timestamp = time.time()
         self.audio_stream.start_stream()
-        if self.verbose >= 2:
+        if self.verbose >= 3:
             print('Voice detected, starting recording...')
 
     def stop_recording(self, save_file: bool = False):
@@ -114,7 +114,7 @@ class MicrophoneListener:
         # Set RGB LED to red
         self.hardware_interaction.rgb_led(red=self.led_intensity, green=0, blue=0)
         self.audio_stream.stop_stream()
-        if self.verbose >= 2:
+        if self.verbose >= 3:
             print('No voice detected for a while, stop recording...')
 
         if (time.time() - self.start_recording_timestamp) >= self.min_sentence_duration + self.max_silence_duration:

@@ -28,7 +28,7 @@ class EthernetClient:
 
     def connect(self) -> None:
         connection_established = False
-        if self.verbose >= 1:
+        if self.verbose >= 2:
             print('Starting Ethernet client...')
         while not connection_established:
             try:
@@ -48,7 +48,7 @@ class EthernetClient:
     def send_data(self, data) -> None:
         try:
             self.socket.sendall(data.encode())
-            if self.verbose >= 2:
+            if self.verbose >= 3:
                 print(f'Client sent: {data}')
         except Exception as e:
             utils.print_exception(exception=e, message='Error in ethernet client send_data')
@@ -67,7 +67,8 @@ class EthernetClient:
                 'name': function_call.name,
                 'args': function_call.args,
             }
-            print(f'Sending function call: {data_to_send}')
+            if self.verbose >= 3:
+                print(f'Sending function call: {data_to_send}')
             # Serialize the dictionary to a JSON string
             json_string = json.dumps(data_to_send)
             # Encode the JSON string to bytes (e.g., UTF-8)
@@ -119,6 +120,8 @@ class EthernetClient:
                 time.sleep(0.3)
 
     def start(self):
+        if self.verbose >= 2:
+            print('Starting Ethernet client...')
         self.connect()
         # Start the receiver and sender threads
         receiver_thread = threading.Thread(target=self.receiver, name='ethernet_client_receiver')
@@ -132,8 +135,11 @@ class EthernetClient:
             print(f'Sender thread started: "{sender_thread.name}"')
 
         receiver_thread.join()
-        print('receiver thread finished.')
+        if self.verbose >= 1:
+            print('receiver thread ended.')
         sender_thread.join()
-        print('sender thread finished.')
+        if self.verbose >= 1:
+            print('sender thread ended.')
         self.close()
-        print('Ethernet client stopped.')
+        if self.verbose >= 1:
+            print('Ethernet client stopped.')

@@ -19,7 +19,7 @@ def text_to_speech(text_input: str,
     Generates speech from text using Google AI Studio's TTS model.
     This function sends a text prompt to the TTS model and saves the generated audio to a file.
     """
-    if verbose >= 2:
+    if verbose >= 3:
         print(f'Generating speech for text:\n\t{text_input}')
     # # add 'Say ' prefix to the text input
     # text_input = f'Say "{text_input}"'
@@ -44,7 +44,7 @@ def text_to_speech(text_input: str,
         # Use first 10 characters of text as filename
         file_name = f'{text_input[:10].replace(" ", "_")}.wav'
         file_path = gc.OUTPUT_FOLDER_PATH + file_name
-        if verbose >= 2:
+        if verbose >= 3:
             print(f'Saving audio to "{file_path}"')
         utils.save_wave_file(file_path=file_path, byte_data=data, verbose=verbose)  # Saves the file
 
