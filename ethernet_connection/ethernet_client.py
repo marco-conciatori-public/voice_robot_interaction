@@ -120,8 +120,6 @@ class EthernetClient:
                 time.sleep(0.3)
 
     def start(self):
-        if self.verbose >= 2:
-            print('Starting Ethernet client...')
         self.connect()
         # Start the receiver and sender threads
         receiver_thread = threading.Thread(target=self.receiver, name='ethernet_client_receiver')
