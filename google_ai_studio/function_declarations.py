@@ -51,7 +51,8 @@ function_list = [
             "properties": {
                 "rotation": {
                     "type": "integer",
-                    "description": "The rotation angle of the gripper.",
+                    "description": "The rotation angle of the gripper. rotation < 90 means clockwise direction, "
+                                   "rotation > 90 means anti-clockwise direction",
                     "minimum": 0,
                     "maximum": 180
                 },
