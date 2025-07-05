@@ -7,8 +7,8 @@ import pyaudio
 
 import args
 import utils
-from microphone import tuning
 import global_constants as gc
+from sensors.microphone import tuning
 
 
 class MicrophoneListener:

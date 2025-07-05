@@ -7,7 +7,7 @@ import global_constants as gc
 from google_ai_studio import service_interface
 from hardware_interaction import HardwareInteraction
 from thread_shared_variables import SharedVariableManager
-from microphone.microphone_listener import MicrophoneListener
+from sensors.microphone.microphone_listener import MicrophoneListener
 from ethernet_connection.ethernet_client import EthernetClient
 
 
