@@ -8,8 +8,8 @@ from google_ai_studio import service_interface
 from sensors.camera.usb_camera import UsbCamera
 from hardware_interaction import HardwareInteraction
 from thread_shared_variables import SharedVariableManager
-from sensors.microphone.microphone_listener import MicrophoneListener
 from ethernet_connection.ethernet_client import EthernetClient
+from sensors.microphone.microphone_listener import MicrophoneListener
 
 
 def main_thread(**kwargs):

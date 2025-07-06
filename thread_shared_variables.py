@@ -3,7 +3,8 @@ import threading
 
 class SharedVariableManager:
     def __init__(self, verbose: int = 0):
-        # Shared variables
+        self.verbose = verbose
+        # Shared queues
         self.reasoning_requests = []
         self.tts_requests = []
         self.functions_to_call = []
