@@ -27,8 +27,6 @@ class UsbCamera:
         self.image_format = parameters['image_format']
         self.shared_variable_manager = shared_variable_manager
 
-        self.latest_image = None
-
         # this should be "1 / self.frame_rate", but it is better if the sampling frequency is higher than the signal
         self.sleep_time = 0.5 / self.frame_rate
 
@@ -87,7 +85,11 @@ class UsbCamera:
                         streak_error_count = 0
                         if self.image_format is not None:
                             ret, image = cv2.imencode(self.image_format, image)
-                        self.latest_image = image
+                        image_dict = {
+                            'image': image,
+                            'timestamp': time.time(),
+                        }
+                        self.shared_variable_manager.set_variable(variable_name='latest_camera_image', value=image_dict)
                 except Exception as e:
                     streak_error_count += 1
                     if self.verbose >= 2:

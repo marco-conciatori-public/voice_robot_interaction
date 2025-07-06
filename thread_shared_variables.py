@@ -12,6 +12,10 @@ class SharedVariableManager:
         self.audio_to_play = []
         self.received_ethernet_data = []
 
+        # Shared variables
+        # this is a dict containing the raw bytes in 'image' and the acquisition time in 'timestamp'
+        self.latest_camera_image = None
+
         # Locks for thread safety
         self.running_components_lock = threading.Lock()
         self.reasoning_requests_lock = threading.Lock()
@@ -19,7 +23,9 @@ class SharedVariableManager:
         self.functions_to_call_lock = threading.Lock()
         self.audio_to_play_lock = threading.Lock()
         self.received_ethernet_data_lock = threading.Lock()
+        self.latest_camera_image_lock = threading.Lock()
 
+    # QUEUE METHODS
     def add_to(self, queue_name: str, value) -> None:
         """
         Adds a value to a shared variable list.
@@ -57,3 +63,14 @@ class SharedVariableManager:
         with lock:
             variable_list = getattr(self, queue_name)
             return value in variable_list
+
+    # VARIABLE METHODS
+    def set_variable(self, variable_name: str, value) -> None:
+        lock = getattr(self, f'{variable_name}_lock')
+        with lock:
+            setattr(self, variable_name, value)
+
+    def get_variable(self, variable_name: str):
+        lock = getattr(self, f'{variable_name}_lock')
+        with lock:
+            return getattr(self, variable_name)
