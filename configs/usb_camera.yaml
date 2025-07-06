@@ -4,3 +4,8 @@ video_id: 0
 width: 640
 height: 480
 frame_rate: 5
+
+max_reading_errors: 5
+# allowed values: OpenCV codes (https://docs.opencv.org/3.4/d4/da8/group__imgcodecs.html)
+#image_format: .jpg
+image_format: None

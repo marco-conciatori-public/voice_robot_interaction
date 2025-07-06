@@ -5,6 +5,7 @@ import args
 import utils
 import global_constants as gc
 from google_ai_studio import service_interface
+from sensors.camera.usb_camera import UsbCamera
 from hardware_interaction import HardwareInteraction
 from thread_shared_variables import SharedVariableManager
 from sensors.microphone.microphone_listener import MicrophoneListener
@@ -51,6 +52,13 @@ def main_thread(**kwargs):
         kwargs=ethernet_client_kwargs,
     )
     ethernet_client_thread.start()
+
+    usb_camera = UsbCamera(verbose=verbose)
+    usb_camera_thread = threading.Thread(
+        target=usb_camera.ready_latest_image,
+        name='usb_camera',
+        daemon=True,
+    )
 
     # beep to indicate the system is ready
     hardware_interaction.set_beep(duration=0.2)
