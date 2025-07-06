@@ -152,15 +152,22 @@ class MicrophoneListener:
         """
         Starts the microphone listener in a separate thread.
         """
-        listener_thread = threading.Thread(target=self.listen, name='microphone_listener')
-        listener_thread.start()
-        if self.verbose >= 1:
-            print('Microphone listener started.')
+        try:
+            listener_thread = threading.Thread(target=self.listen, name='microphone_listener')
+            listener_thread.start()
+            self.shared_variable_manager.add_to(queue_name='running_components', value='microphone_listener')
+            if self.verbose >= 1:
+                print('Microphone listener started.')
+        except Exception as e:
+            self.shared_variable_manager.remove_from(queue_name='running_components', value='microphone_listener')
+            utils.print_exception(exception=e, message='Error starting microphone listener thread')
+            raise
 
     def __del__(self):
         """
         Closes the microphone interface and releases resources.
         """
+        self.shared_variable_manager.remove_from(queue_name='running_components', value='microphone_listener')
         if self.audio_stream is not None:
             self.audio_stream.stop_stream()
             self.audio_stream.close()

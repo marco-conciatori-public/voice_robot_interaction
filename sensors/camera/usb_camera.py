@@ -8,7 +8,7 @@ import global_constants as gc
 
 
 class UsbCamera:
-    def __init__(self, **kwargs):
+    def __init__(self, shared_variable_manager=None, **kwargs):
         print(f'this path: {os.path.abspath(__file__)}')
         print(f'this file: {os.path.basename(os.path.abspath(__file__))}')
         print(f'full path: {gc.CONFIG_FOLDER_PATH + os.path.basename(os.path.abspath(__file__))}')
@@ -25,6 +25,7 @@ class UsbCamera:
         self.verbose = parameters['verbose']
         self.max_reading_errors = parameters['max_reading_errors']
         self.image_format = parameters['image_format']
+        self.shared_variable_manager = shared_variable_manager
 
         self.latest_image = None
 
@@ -42,7 +43,12 @@ class UsbCamera:
         self.video.set(5, self.frame_rate)
 
     def __del__(self):
-        self.video.release()
+        try:
+            self.video.release()
+        except:
+            pass
+        if self.shared_variable_manager is not None:
+            self.shared_variable_manager.remove_from(queue_name='running_components', value='usb_camera')
 
     def get_raw_frame(self) -> bytes:
         success, image = self.video.read()
@@ -64,23 +70,33 @@ class UsbCamera:
         return jpeg.tobytes()
 
     def ready_latest_image(self) -> None:
-        self.open_camera()
-        streak_error_count = 0
-        while streak_error_count < self.max_reading_errors:
-            try:
-
-                success, image = self.video.read()
-                if not success:
+        assert self.shared_variable_manager is not None, ('shared_variable_manager must be provided to use '
+                                                          '"ready_latest_image".')
+        try:
+            self.open_camera()
+            streak_error_count = 0
+            self.shared_variable_manager.add_to(queue_name='running_components', value='usb_camera')
+            while streak_error_count < self.max_reading_errors:
+                try:
+                    success, image = self.video.read()
+                    if not success:
+                        streak_error_count += 1
+                        if self.verbose >= 2:
+                            print('Error: could not read current frame.')
+                    else:
+                        streak_error_count = 0
+                        if self.image_format is not None:
+                            ret, image = cv2.imencode(self.image_format, image)
+                        self.latest_image = image
+                except Exception as e:
                     streak_error_count += 1
                     if self.verbose >= 2:
-                        print('Error: could not read current frame.')
-                else:
-                    streak_error_count = 0
-                    if self.image_format is not None:
-                        ret, image = cv2.imencode(self.image_format, image)
-                    self.latest_image = image
-            except Exception as e:
-                streak_error_count += 1
-                if self.verbose >= 2:
-                    utils.print_exception(exception=e, message='Error in USB camera')
-            time.sleep(self.sleep_time)
+                        utils.print_exception(exception=e, message='Error in USB camera')
+                time.sleep(self.sleep_time)
+
+            self.shared_variable_manager.remove_from(queue_name='running_components', value='usb_camera')
+            print('Too many errors in reading usb camera frames, closing camera')
+        except Exception as e:
+            self.shared_variable_manager.remove_from(queue_name='running_components', value='usb_camera')
+            utils.print_exception(exception=e, message='Error in USB camera')
+

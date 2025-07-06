@@ -14,6 +14,9 @@ class HardwareInteraction:
         self.bus = smbus.SMBus(parameters['smbus_id'])
         self.verbose = parameters['verbose']
 
+        self.shared_variable_manager = parameters['shared_variable_manager']
+        self.shared_variable_manager.add_to(queue_name='running_components', value='hardware_interaction')
+
     # Set the specified color of the RGB light. Red, green, and blue: 0-255
     def rgb_led(self, red: int, green: int, blue: int) -> None:
         try:

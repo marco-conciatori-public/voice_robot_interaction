@@ -20,11 +20,11 @@ def main_thread(**kwargs):
     parameters = args.import_args(yaml_path=gc.CONFIG_FOLDER_PATH + 'main_thread.yaml', **kwargs)
     verbose = parameters['verbose']
 
-    # Initialize the hardware interaction interface
-    hardware_interaction = HardwareInteraction(verbose=verbose)
-
     # Initialize the shared variable manager
     shared_variable_manager = SharedVariableManager(verbose=verbose)
+
+    # Initialize the hardware interaction interface
+    hardware_interaction = HardwareInteraction(shared_variable_manager=shared_variable_manager, verbose=verbose)
 
     # Initialize the Google AI Studio service interface
     google_ai_studio_service = service_interface.GoogleAIStudioService(
@@ -53,7 +53,7 @@ def main_thread(**kwargs):
     )
     ethernet_client_thread.start()
 
-    usb_camera = UsbCamera(verbose=verbose)
+    usb_camera = UsbCamera(shared_variable_manager=shared_variable_manager, verbose=verbose)
     usb_camera_thread = threading.Thread(
         target=usb_camera.ready_latest_image,
         name='usb_camera',
@@ -83,17 +83,20 @@ def keep_restarting_ethernet_client(shared_variable_manager: SharedVariableManag
     """
     Continuously attempts to restart the Ethernet client if it is not running.
     """
-    ethernet_client = None
-    while ethernet_client is None:
+    while not shared_variable_manager.has_value(queue_name='running_components', value='ethernet_client'):
+        if verbose >= 2:
+            print('Ethernet client not running. Attempting to restart in 10 seconds...')
         try:
             ethernet_client = EthernetClient(
                 shared_variable_manager=shared_variable_manager,
                 verbose=verbose,
             )
             ethernet_client.start()
+            shared_variable_manager.add_to(queue_name='running_components', value='ethernet_client')
         except Exception as e:
-            utils.print_exception(exception=e, message='Ethernet client failed. Retrying in 10 seconds...')
-        time.sleep(10)
+            utils.print_exception(exception=e, message='Ethernet client failed. Retrying in 5 seconds...')
+            shared_variable_manager.remove_from(queue_name='running_components', value='ethernet_client')
+        time.sleep(5)
 
 
 if __name__ == '__main__':

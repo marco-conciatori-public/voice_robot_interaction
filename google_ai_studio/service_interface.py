@@ -90,11 +90,13 @@ class GoogleAIStudioService:
                 daemon=True,
             )
             reasoning_thread.start()
+            self.shared_variable_manager.add_to(queue_name='running_components', value='reasoning_service')
             if self.verbose >= 1:
                 print('Reasoning service thread started.')
 
         except Exception as e:
             utils.print_exception(exception=e, message='Error starting reasoning service thread')
+            self.shared_variable_manager.remove_from(queue_name='running_components', value='reasoning_service')
             raise
 
         if self.use_tts_service:
@@ -104,10 +106,12 @@ class GoogleAIStudioService:
                 # if there are no threads remaining with daemon=False, the main thread will exit
                 tts_thread = threading.Thread(target=self.run_tts_service, name='tts_service', daemon=True)
                 tts_thread.start()
+                self.shared_variable_manager.add_to(queue_name='running_components', value='tts_service')
                 if self.verbose >= 1:
                     print('TTS service thread started.')
             except Exception as e:
                 utils.print_exception(exception=e, message='Error starting TTS service thread')
                 self.use_tts_service = False
+                self.shared_variable_manager.remove_from(queue_name='running_components', value='tts_service')
                 if self.verbose >= 1:
                     print('TTS service disabled due to an error. From now on, the responses will be printed.')

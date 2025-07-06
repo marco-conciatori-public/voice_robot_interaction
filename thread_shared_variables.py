@@ -5,6 +5,7 @@ class SharedVariableManager:
     def __init__(self, verbose: int = 0):
         self.verbose = verbose
         # Shared queues
+        self.running_components = []
         self.reasoning_requests = []
         self.tts_requests = []
         self.functions_to_call = []
@@ -12,6 +13,7 @@ class SharedVariableManager:
         self.received_ethernet_data = []
 
         # Locks for thread safety
+        self.running_components_lock = threading.Lock()
         self.reasoning_requests_lock = threading.Lock()
         self.tts_requests_lock = threading.Lock()
         self.functions_to_call_lock = threading.Lock()
@@ -41,3 +43,17 @@ class SharedVariableManager:
                 return variable_list.pop(0)
             return None
 
+    def remove_from(self, queue_name: str, value) -> bool:
+        lock = getattr(self, f"{queue_name}_lock")
+        with lock:
+            variable_list = getattr(self, queue_name)
+            if value in variable_list:
+                variable_list.remove(value)
+                return True
+            return False
+
+    def has_value(self, queue_name: str, value) -> bool:
+        lock = getattr(self, f"{queue_name}_lock")
+        with lock:
+            variable_list = getattr(self, queue_name)
+            return value in variable_list
