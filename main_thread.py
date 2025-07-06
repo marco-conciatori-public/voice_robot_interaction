@@ -59,6 +59,7 @@ def main_thread(**kwargs):
         name='usb_camera',
         daemon=True,
     )
+    usb_camera_thread.start()
 
     # beep to indicate the system is ready
     hardware_interaction.set_beep(duration=0.2)
