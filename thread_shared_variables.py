@@ -3,7 +3,9 @@ import threading
 
 class SharedVariableManager:
     def __init__(self, verbose: int = 0):
+        # internal parameters
         self.verbose = verbose
+
         # Shared queues
         self.running_components = []
         self.reasoning_requests = []
@@ -32,7 +34,7 @@ class SharedVariableManager:
         :param queue_name: The name of the shared variable list.
         :param value: The value to add to the list.
         """
-        lock = getattr(self, f"{queue_name}_lock")
+        lock = getattr(self, f'{queue_name}_lock')
         with lock:
             getattr(self, queue_name).append(value)
 
@@ -42,7 +44,7 @@ class SharedVariableManager:
         :param queue_name: The name of the shared variable list.
         :return: The popped value or None if the list is empty.
         """
-        lock = getattr(self, f"{queue_name}_lock")
+        lock = getattr(self, f'{queue_name}_lock')
         with lock:
             variable_list = getattr(self, queue_name)
             if len(variable_list) > 0:
@@ -50,7 +52,7 @@ class SharedVariableManager:
             return None
 
     def remove_from(self, queue_name: str, value) -> bool:
-        lock = getattr(self, f"{queue_name}_lock")
+        lock = getattr(self, f'{queue_name}_lock')
         with lock:
             variable_list = getattr(self, queue_name)
             if value in variable_list:
@@ -59,7 +61,7 @@ class SharedVariableManager:
             return False
 
     def has_value(self, queue_name: str, value) -> bool:
-        lock = getattr(self, f"{queue_name}_lock")
+        lock = getattr(self, f'{queue_name}_lock')
         with lock:
             variable_list = getattr(self, queue_name)
             return value in variable_list

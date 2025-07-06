@@ -101,4 +101,3 @@ class UsbCamera:
         except Exception as e:
             self.shared_variable_manager.remove_from(queue_name='running_components', value='usb_camera')
             utils.print_exception(exception=e, message='Error in USB camera')
-
