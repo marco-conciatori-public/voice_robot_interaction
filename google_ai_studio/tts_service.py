@@ -38,7 +38,7 @@ def text_to_speech(text_input: str,
     if save_file:
         # Ensure the output folder exists
         Path(gc.OUTPUT_FOLDER_PATH).mkdir(parents=True, exist_ok=True)
-        # Use first 10 characters of text as filename
+        # Use the first 10 characters of the text as filename
         file_name = f'{text_input[:10].replace(" ", "_")}.wav'
         file_path = gc.OUTPUT_FOLDER_PATH + file_name
         if verbose >= 3:
