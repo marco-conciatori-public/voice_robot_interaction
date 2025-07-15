@@ -1,5 +1,6 @@
 import time
 import threading
+import warnings
 
 from google import genai
 from google.genai import types
@@ -26,6 +27,7 @@ class GoogleAIStudioService:
         self.reasoning_parameters = parameters['reasoning_parameters']
         self.use_tts_service = parameters['use_tts_service']
         self.tts_parameters = parameters['tts_parameters']
+        self.image_spoilage_time = parameters['image_spoilage_time']
         self.verbose = parameters['verbose']
 
         self.reasoning_service = ReasoningService(client=self.client, tools=self.tools, **self.reasoning_parameters)
@@ -40,7 +42,20 @@ class GoogleAIStudioService:
             if request is not None:
                 textual_response, function_call_response = self.reasoning_service.reasoning(**request)
                 if function_call_response is not None:
-                    self.shared_variable_manager.add_to(queue_name='functions_to_call', value=function_call_response)
+                    if function_call_response.get("name") == "get_camera_image":
+                        current_camera_image = self.get_camera_image()
+                        if current_camera_image is not None:
+                            # send a new reasoning request with the latest image (hoping that the model will remember
+                            # the latest user request)
+                            self.shared_variable_manager.add_to(
+                                queue_name='reasoning_requests',
+                                value=current_camera_image,
+                            )
+                    else:
+                        self.shared_variable_manager.add_to(
+                            queue_name='functions_to_call',
+                            value=function_call_response,
+                        )
                 if textual_response is not None:
                     if self.use_tts_service:
                         self.shared_variable_manager.add_to(queue_name='tts_requests', value=textual_response)
@@ -115,3 +130,11 @@ class GoogleAIStudioService:
                 self.shared_variable_manager.remove_from(queue_name='running_components', value='tts_service')
                 if self.verbose >= 1:
                     print('TTS service disabled due to an error. From now on, the responses will be printed.')
+
+    def get_camera_image(self):
+        image_dict = self.shared_variable_manager.get_variable(variable_name='latest_camera_image')
+        if time.time() - image_dict['timestamp'] > self.image_spoilage_time:
+            return image_dict['image']
+        else:
+            warnings.warn(f'Image is too old ({image_dict["timestamp"]} s). Please wait for a new image to be captured')
+            return None

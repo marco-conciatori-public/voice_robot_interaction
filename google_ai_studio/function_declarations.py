@@ -147,5 +147,15 @@ function_list = [
             },
             "required": ["duration"]
         }
+    },
+    {
+        "name": "get_camera_image",
+        "description": "Captures an image from the robot's arm's camera and returns it as a base64-encoded string. This"
+                       "function allows the robot's pilot to access the camera feed.",
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {},
+            "required": []
+        }
     }
 ]
