@@ -1,20 +1,15 @@
-import os
 import cv2
 import time
 
 import args
 import utils
-import global_constants as gc
 
 
 class UsbCamera:
     def __init__(self, shared_variable_manager=None, **kwargs):
-        print(f'this path: {os.path.abspath(__file__)}')
-        print(f'this file: {os.path.basename(os.path.abspath(__file__))}')
-        print(f'full path: {gc.CONFIG_FOLDER_PATH + os.path.basename(os.path.abspath(__file__))}')
         parameters = args.import_args(
-            # yaml_path=gc.CONFIG_FOLDER_PATH + 'microphone_listener.yaml',
-            yaml_path=gc.CONFIG_FOLDER_PATH + os.path.basename(os.path.abspath(__file__)),
+            # yaml_path=gc.CONFIG_FOLDER_PATH + 'usb_camera.yaml',
+            caller_name=__file__,
             **kwargs,
         )
         self.video = None
