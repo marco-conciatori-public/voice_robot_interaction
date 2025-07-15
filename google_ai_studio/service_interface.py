@@ -42,7 +42,7 @@ class GoogleAIStudioService:
             if request is not None:
                 textual_response, function_call_response = self.reasoning_service.reasoning(**request)
                 if function_call_response is not None:
-                    if function_call_response.get("name") == "get_camera_image":
+                    if function_call_response.name == "get_camera_image":
                         current_camera_image = self.get_camera_image()
                         if current_camera_image is not None:
                             # send a new reasoning request with the latest image (hoping that the model will remember
