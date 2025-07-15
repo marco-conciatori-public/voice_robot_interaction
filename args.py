@@ -5,9 +5,15 @@ import argparse
 import utils
 
 
-def import_args(yaml_path: str, read_from_command_line: bool = False, **kwargs) -> dict:
+def import_args(yaml_path: str = None, caller_name: str = None, read_from_command_line: bool = False, **kwargs) -> dict:
     # read data from yaml config file
+    # it will use either yaml_path or caller_name, one and only one must be supplied
+    # caller_name is expected to be __file__ of the calling script
     # if the file is not found, it will try to go up one level and look for the file again (up to max_iterations times)
+    assert caller_name is not None or yaml_path is not None, 'Either yaml_path or caller_name must be supplied'
+    assert caller_name is None or yaml_path is None, 'Only one of yaml_path or caller_name can be supplied'
+    if caller_name is not None:
+        yaml_path = utils.get_yaml_path(caller_name)
 
     max_iterations = 5
     level_up = 0

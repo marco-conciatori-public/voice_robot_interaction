@@ -1,6 +1,9 @@
 import wave
 import numpy as np
 import sounddevice as sd
+from pathlib import Path
+
+import global_constants as gc
 
 
 def get_api_key(file_path: str) -> str:
@@ -80,3 +83,20 @@ def print_exception(exception: Exception, message: str = None) -> None:
         print(f'{message}:\n\t{exception}\n\t{exception.__traceback__}')
     else:
         print(f'Error:\n\t{exception}\n\t{exception.__traceback__}')
+
+
+def get_yaml_path(caller_name: str) -> str:
+    print(f'Getting yaml path for {caller_name}...')
+    temp_path = Path(caller_name)
+    print(f'temp_path: {temp_path}')
+    resolved_path = temp_path.resolve()
+    print(f'resolved_path: {resolved_path}')
+    file_name = resolved_path.name
+    print(f'file_name: {file_name}')
+    file_name_no_extension = resolved_path.stem
+    print(f'file_name_no_extension: {file_name_no_extension}')
+    yaml_name = file_name_no_extension + '.yaml'
+    print(f'yaml_name: {yaml_name}')
+    yaml_path = gc.CONFIG_FOLDER_PATH + yaml_name
+    print(f'yaml_path: {yaml_path}')
+    return yaml_path
