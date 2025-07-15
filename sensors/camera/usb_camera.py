@@ -80,9 +80,13 @@ class UsbCamera:
                         streak_error_count = 0
                         if self.image_format is not None:
                             ret, image = cv2.imencode(self.image_format, image)
+
+                        # The .tobytes() method converts the numpy array to a bytes object
+                        image_bytes = image.tobytes()
                         image_dict = {
-                            'image': image,
+                            'image': image_bytes,
                             'timestamp': time.time(),
+                            'format': self.image_format,
                         }
                         self.shared_variable_manager.set_variable(variable_name='latest_camera_image', value=image_dict)
                 except Exception as e:
