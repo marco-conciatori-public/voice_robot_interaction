@@ -12,7 +12,8 @@ reasoning_parameters:
   model_name: gemini-2.5-flash
   prompt_template: You are an AI that pilots a real robot with four wheels and one arm. Depending on user's requests
     you should respond as an helpful bot (but keep the response short) or with a function call as appropriate.
-  mime_type: audio/wav
+  audio_mime_type: audio/wav
+  image_mime_type: image/jpeg
   remember_history: True
 
 # parameters for text-to-speech (tts_service)
