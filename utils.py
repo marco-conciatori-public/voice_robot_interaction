@@ -86,17 +86,6 @@ def print_exception(exception: Exception, message: str = None) -> None:
 
 
 def get_yaml_path(caller_name: str) -> str:
-    print(f'Getting yaml path for {caller_name}...')
-    temp_path = Path(caller_name)
-    print(f'temp_path: {temp_path}')
-    resolved_path = temp_path.resolve()
-    print(f'resolved_path: {resolved_path}')
-    file_name = resolved_path.name
-    print(f'file_name: {file_name}')
-    file_name_no_extension = resolved_path.stem
-    print(f'file_name_no_extension: {file_name_no_extension}')
-    yaml_name = file_name_no_extension + '.yaml'
-    print(f'yaml_name: {yaml_name}')
-    yaml_path = gc.CONFIG_FOLDER_PATH + yaml_name
-    print(f'yaml_path: {yaml_path}')
+    file_name_no_extension = Path(caller_name).resolve().stem
+    yaml_path = gc.CONFIG_FOLDER_PATH + file_name_no_extension + '.yaml'
     return yaml_path
