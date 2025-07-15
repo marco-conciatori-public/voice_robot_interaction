@@ -49,7 +49,7 @@ class GoogleAIStudioService:
                             # the latest user request)
                             self.shared_variable_manager.add_to(
                                 queue_name='reasoning_requests',
-                                value=current_camera_image,
+                                value={'image_bytes': current_camera_image},
                             )
                     else:
                         self.shared_variable_manager.add_to(
