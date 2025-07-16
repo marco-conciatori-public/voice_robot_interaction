@@ -84,7 +84,11 @@ def main_thread(**kwargs):
         hardware_interaction.set_beep(duration=0.2)
         print(f'Expected {shared_variable_manager.get_variable(variable_name="expected_component_number")} components,'
               f' but only found {shared_variable_manager.length(queue_name="running_components")}.')
-        print(f'Running components:\n\t{shared_variable_manager.get_copy(queue_name="running_components")}')
+        temp_running_components = shared_variable_manager.get_copy(queue_name='running_components')
+        temp_already_counted_components = shared_variable_manager.get_copy(queue_name='already_counted_components')
+        for component in temp_already_counted_components:
+            if component not in temp_running_components:
+                print(f'\tComponent {component} missing from running_components.')
         # exit()
 
     while True:
