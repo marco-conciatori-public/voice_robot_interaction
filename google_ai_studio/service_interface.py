@@ -133,7 +133,7 @@ class GoogleAIStudioService:
 
     def get_camera_image(self):
         image_dict = self.shared_variable_manager.get_variable(variable_name='latest_camera_image')
-        if time.time() - image_dict['timestamp'] > self.image_spoilage_time:
+        if time.time() - image_dict['timestamp'] < self.image_spoilage_time:
             return image_dict['image']
         else:
             warnings.warn(f'Image is too old ({time.time() - image_dict["timestamp"]} s). Please wait for a new image'
