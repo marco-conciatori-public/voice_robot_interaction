@@ -81,8 +81,25 @@ class GoogleAIStudioService:
                         verbose=self.verbose,
                     )
                 except Exception as e:
+                    print('DEBUG: in TTS general exception')
                     utils.print_exception(exception=e, message='Error in TTS service')
                     audio_response = None
+                    # check if the problem is due to reaching the request limit
+                    if hasattr(e, 'code') and e.code == 429:
+                        print("TTS rate limit reached, responses will be printed in the console from now on.")
+                        self.use_tts_service = False
+                        # use also the speaker to deliver error message
+                        try:
+                            error_audio_file_path = gc.ASSETS_FOLDER_PATH + 'TTS_request_limit.wav'
+                            with open(error_audio_file_path, 'rb') as error_audio_file:
+                                error_audio_message = error_audio_file.read()
+                                self.shared_variable_manager.add_to(
+                                    queue_name='audio_to_play',
+                                    value=error_audio_message,
+                                )
+                        except Exception as e:
+                            utils.print_exception(exception=e, message='Error opening/reading error audio file')
+
                     if self.verbose >= 1:
                         print(request)
                 if audio_response is not None:
