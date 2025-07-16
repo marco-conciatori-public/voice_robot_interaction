@@ -7,7 +7,6 @@ class SharedVariableManager:
         self.verbose = verbose
 
         # Shared queues
-        self.running_components = []
         self.reasoning_requests = []
         self.tts_requests = []
         self.functions_to_call = []
@@ -19,13 +18,22 @@ class SharedVariableManager:
         self.latest_camera_image = None
 
         # Locks for thread safety
-        self.running_components_lock = threading.Lock()
         self.reasoning_requests_lock = threading.Lock()
         self.tts_requests_lock = threading.Lock()
         self.functions_to_call_lock = threading.Lock()
         self.audio_to_play_lock = threading.Lock()
         self.received_ethernet_data_lock = threading.Lock()
         self.latest_camera_image_lock = threading.Lock()
+
+        # variables and locks for components logic
+        self.running_components = []
+        # "expected_component_number" will count the number of components/services the system is expected to have based
+        # on the "add_to" calls on "running_components"
+        self.expected_component_number = 0
+        self.already_counted_components = []
+        self.running_components_lock = threading.Lock()
+        self.expected_component_number_lock = threading.Lock()
+        self.already_counted_components_lock = threading.Lock()
 
     # QUEUE METHODS
     def add_to(self, queue_name: str, value) -> None:
@@ -34,6 +42,18 @@ class SharedVariableManager:
         :param queue_name: The name of the shared variable list.
         :param value: The value to add to the list.
         """
+        # if we are adding values to the running_components list, we need to increase the expected_component_number,
+        # but only if the component is not already counted. Es. ethernet client could be added many times.
+        increase_component_number = False
+        if queue_name == 'running_components':
+            with self.already_counted_components_lock:
+                if value not in self.already_counted_components:
+                    self.already_counted_components.append(value)
+                    increase_component_number = True
+            if increase_component_number:
+                with self.expected_component_number_lock:
+                    self.expected_component_number += 1
+
         lock = getattr(self, f'{queue_name}_lock')
         with lock:
             getattr(self, queue_name).append(value)
@@ -65,6 +85,16 @@ class SharedVariableManager:
         with lock:
             variable_list = getattr(self, queue_name)
             return value in variable_list
+
+    def length(self, queue_name: str) -> int:
+        lock = getattr(self, f'{queue_name}_lock')
+        with lock:
+            return len(getattr(self, queue_name))
+
+    def get_copy(self, queue_name: str) -> list:
+        lock = getattr(self, f'{queue_name}_lock')
+        with lock:
+            return getattr(self, queue_name).copy()
 
     # VARIABLE METHODS
     def set_variable(self, variable_name: str, value) -> None:
