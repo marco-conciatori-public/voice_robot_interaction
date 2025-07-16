@@ -61,8 +61,31 @@ def main_thread(**kwargs):
     )
     usb_camera_thread.start()
 
-    # beep to indicate the system is ready
-    hardware_interaction.set_beep(duration=0.2)
+    counter = 0
+    setup_complete = False
+    while counter < 5:
+        if (shared_variable_manager.length(queue_name='running_components') ==
+                shared_variable_manager.get_variable(variable_name='expected_component_number')):
+            setup_complete = True
+            break
+        time.sleep(2)
+        counter += 1
+
+    if setup_complete:
+        print('System ready, all components running.')
+        # beep to indicate the system is ready
+        hardware_interaction.set_beep(duration=0.2)
+    else:
+        print('System setup failed.')
+        hardware_interaction.set_beep(duration=0.2)
+        time.sleep(0.05)
+        hardware_interaction.set_beep(duration=0.2)
+        time.sleep(0.05)
+        hardware_interaction.set_beep(duration=0.2)
+        print(f'Expected {shared_variable_manager.get_variable(variable_name="expected_component_number")} components,'
+              f' but only found {shared_variable_manager.length(queue_name="running_components")}.')
+        print(f'Running components:\n\t{shared_variable_manager.get_copy(queue_name="running_components")}')
+        # exit()
 
     while True:
         audio_to_play = shared_variable_manager.pop_from(queue_name='audio_to_play')
