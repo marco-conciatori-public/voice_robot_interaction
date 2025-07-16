@@ -1,6 +1,6 @@
 import time
-import threading
 import warnings
+import threading
 
 from google import genai
 from google.genai import types
