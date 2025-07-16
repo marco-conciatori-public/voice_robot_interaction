@@ -136,5 +136,6 @@ class GoogleAIStudioService:
         if time.time() - image_dict['timestamp'] > self.image_spoilage_time:
             return image_dict['image']
         else:
-            warnings.warn(f'Image is too old ({image_dict["timestamp"]} s). Please wait for a new image to be captured')
+            warnings.warn(f'Image is too old ({time.time() - image_dict["timestamp"]} s). Please wait for a new image'
+                          f' to be captured')
             return None
