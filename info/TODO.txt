@@ -1,0 +1,16 @@
+- when the gemini-2.5-flash model (for reasoning) daily calls are exhausted, switch automatically to gemini-2.0-flash.
+- when the gemini-2.5-flash model (for reasoning) daily calls are exhausted, stop the voice interaction entirely.
+- when the gemini-2.5-flash-preview-tts model (for Text-To-Speech) daily calls are exhausted
+    - all the points below are already implemented, but have never been tested. In particular, it is not clear if the
+    code for detecting daily calls limit works or not.
+    - print responses in the console, in case the user connects remotely to the robot or a screen is connected to the
+     robot
+    - specifically print to console the last sentence (the one that gave the error/signal of finished usage) because it
+     would otherwise not be played nor written
+    - play the pre-recorded audio saying to the notifying the user of the situation
+
+- add hardware for measuring the charge of the battery connected to the Jetson NANO (through the expansion board),
+since they have no ability to do so.
+    - then add code to monitor and handle the battery level.
+        - signal user with sound when battery charge is too low.
+        - power off the Jetson NANO when battery charge is too low.

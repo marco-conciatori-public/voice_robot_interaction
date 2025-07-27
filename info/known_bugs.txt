@@ -1,0 +1,7 @@
+- When outside my home wi-fi network (robot hotspotted through my smartphone), voice interaction often breaks down and
+ requires a full restart, especially when requiring interaction with the arm camera.
+
+- sometimes, when restarting the script main script without restarting the Jetson NANO, the microphone resource is not
+released correctly, causing the newly launched script to give an error when trying to access the microphone. There
+should be a linux command for resetting the microphone, which should solve the problem (can be automatically called
+ when the specific error is detected). But I don't know if it actually works, and have not tested it for now.
