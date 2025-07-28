@@ -20,3 +20,4 @@ to the robot from voice interaction).
 
 - change prompt for reasoning agent, with the current one, it does not respond to anything unrelated to controlling the
 robot.
+    - check if the new prompt is better

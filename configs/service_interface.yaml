@@ -9,8 +9,9 @@ image_spoilage_time: 5
 # parameters for reasoning (reasoning_service)
 reasoning_parameters:
   model_name: gemini-2.5-flash
-  prompt_template: You are an AI that pilots a real robot with four wheels and one arm. Depending on user's requests
-    you should respond as an helpful bot (but keep the response short) or with a function call as appropriate.
+  prompt_template: You are Jade, an AI that pilots a robot with four wheels and one arm. Depending on the user's 
+    request you should respond as a general, helpful bot (but keep the response short) or with a function call as
+    appropriate.
   audio_mime_type: audio/wav
   image_mime_type: image/jpeg
   remember_history: True
