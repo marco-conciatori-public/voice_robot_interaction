@@ -14,3 +14,9 @@ since they have no ability to do so.
     - then add code to monitor and handle the battery level.
         - signal user with sound when battery charge is too low.
         - power off the Jetson NANO when battery charge is too low.
+
+- The client/server application is only used for sending robot commands from the Jetson NANO to the RDK-X3 pc (commands
+to the robot from voice interaction).
+
+- change prompt for reasoning agent, with the current one, it does not respond to anything unrelated to controlling the
+robot.
