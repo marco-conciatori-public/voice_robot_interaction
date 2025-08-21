@@ -34,6 +34,11 @@ class UsbCamera:
         self.video.set(3, self.width)
         self.video.set(4, self.height)
         self.video.set(5, self.frame_rate)
+        if self.verbose >= 1:
+            if self.video.isOpened():
+                print('Opened camera successfully')
+            else:
+                print('Error: could not open camera')
 
     def __del__(self):
         try:
