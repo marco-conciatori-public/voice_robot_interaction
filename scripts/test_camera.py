@@ -9,8 +9,14 @@ import cv2
 
 if __name__ == '__main__':
     capture = cv2.VideoCapture(0)
+    if capture.isOpened():
+        print('Opened camera successfully')
+    else:
+        print('Error: could not open camera')
     while True:
-        _, img = capture.read()
+        success, img = capture.read()
+        if not success:
+            print('Error: could not read current frame')
         img = cv2.resize(img, (640, 480))
         cv2.imshow("img", img)
         action = cv2.waitKey(10) & 0xff
