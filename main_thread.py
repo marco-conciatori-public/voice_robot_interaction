@@ -9,6 +9,7 @@ from sensors.camera.usb_camera import UsbCamera
 from hardware_interaction import HardwareInteraction
 from thread_shared_variables import SharedVariableManager
 from ethernet_connection.ethernet_client import EthernetClient
+from ethernet_connection.frame_streamer import FrameStreamerClient
 from sensors.microphone.microphone_listener import MicrophoneListener
 
 
@@ -60,6 +61,16 @@ def main_thread(**kwargs):
         daemon=True,
     )
     usb_camera_thread.start()
+
+    # Streams the arm camera frames to the RDK X3 on demand, so they can be shown in the VR/mobile apps.
+    # It reuses the frames already captured above (latest_camera_image), it does not open the camera again.
+    frame_streamer = FrameStreamerClient(shared_variable_manager=shared_variable_manager, verbose=verbose)
+    frame_streamer_thread = threading.Thread(
+        target=frame_streamer.run_forever,
+        name='frame_streamer',
+        daemon=True,
+    )
+    frame_streamer_thread.start()
 
     counter = 0
     setup_complete = False

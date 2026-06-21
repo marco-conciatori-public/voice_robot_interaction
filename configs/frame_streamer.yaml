@@ -1,0 +1,9 @@
+verbose: 0
+
+# The RDK X3 (main board) is the server for the arm-camera stream. This is the same wired-link IP used by
+# ethernet_client.yaml, but a different port (the JSON command channel is 65432).
+host: '192.168.10.11'
+port: 65433
+
+# If the connection fails or drops, the client will retry to connect after this interval.
+retry_interval: 20 # seconds
