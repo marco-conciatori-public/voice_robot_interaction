@@ -1,15 +1,11 @@
 verbose: 0
 
-# run get_index.py to get index
-# TODO: can be automated?
-device_index: 11
+# The microphone now physically lives on the RDK X3 main board. This component receives the processed audio +
+# VAD over the wired link; the connection settings are in mic_stream_client.yaml. The audio identification
+# numbers and device index are no longer needed here (the RDK X3 owns the device).
 
-# ReSpeaker 4-Mic Array v2.0 identification numbers
-vendor_id: 0x2886
-product_id: 0x0018
-
-# if a voice was detected and a recording started, if no voice is detected for this duration, the recording will stop
-# (in seconds)
+# if a voice was detected and a recording started, if no voice is detected for this duration, the recording
+# will stop (in seconds)
 max_silence_duration: 2
 # recordings shorter than this duration (seconds) will be discarded
 min_sentence_duration: 1
@@ -17,12 +13,11 @@ min_sentence_duration: 1
 # whether to save audio files recorded by the microphone listener
 save_file: False
 
-# audio stream configuration
+# format of the received PCM, used to package the in-memory WAV sent to the reasoning API. These MUST match
+# what the RDK X3 sends (see audio_bridge_server.yaml: mic_sample_rate, mic_format = 16 kHz mono 16-bit).
 stream_params:
   # audio sample rate in Hz
   sample_rate: 16000
-  # chunk size in samples
-  chunk_size: 1024
   # number of channels
   channels: 1
   # width of each sample in bytes

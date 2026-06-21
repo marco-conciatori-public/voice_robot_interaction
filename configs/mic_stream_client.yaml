@@ -1,0 +1,10 @@
+verbose: 0
+
+# The RDK X3 (main board) owns the ReSpeaker microphone and serves its processed audio + VAD over the wired
+# link. Same IP as ethernet_client.yaml / frame_streamer.yaml, different port (see the RDK X3
+# audio_bridge_server.yaml: mic_stream_port).
+host: '192.168.10.11'
+port: 65434
+
+# If the connection fails or drops, the client will retry to connect after this interval.
+retry_interval: 5 # seconds

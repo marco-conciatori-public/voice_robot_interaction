@@ -1,0 +1,9 @@
+verbose: 0
+
+# The RDK X3 (main board) owns the speakers (via the ReSpeaker output) and plays the TTS audio we send it.
+# Same IP as the other clients, different port (see the RDK X3 audio_bridge_server.yaml: speaker_playback_port).
+host: '192.168.10.11'
+port: 65435
+
+# If the connection fails or drops, the client will retry to connect after this interval.
+retry_interval: 5 # seconds

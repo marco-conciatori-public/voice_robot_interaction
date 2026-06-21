@@ -3,117 +3,93 @@ import wave
 import time
 import threading
 
-import pyaudio
-
 import args
 import utils
 import global_constants as gc
-from sensors.microphone import tuning
+from ethernet_connection.mic_stream_client import MicStreamClient
 
 
 class MicrophoneListener:
     def __init__(self, shared_variable_manager, hardware_interaction, **kwargs):
         """
-        Initializes the MicrophoneListener with the specified product and vendor IDs.
+        Listens to the microphone, which now physically lives on the RDK X3 main board. Instead of opening a
+        local audio device, it receives the already processed audio (AEC + beamforming + noise suppression)
+        plus the hardware VAD flag from the RDK X3 over the wired link (see MicStreamClient and, on the RDK X3,
+        audio_bridge_server.py). The recording state machine (start on voice, stop after a silence gap, discard
+        too-short clips) is unchanged; only the audio source changed.
+
         :param shared_variable_manager: instance of SharedVariableManager to manage shared variables.
-        :param product_id: value needed to identify the microphone device.
-        :param vendor_id: value needed to identify the microphone device.
-        :param max_silence_duration: maximum duration in seconds after which a recording is stopped if no voice is
-         detected.
-        :param min_sentence_duration: minimum duration in seconds for a valid recording.
-        :param verbose: verbosity level for logging.
+        :param hardware_interaction: used to drive the status RGB LED.
         """
         self.shared_variable_manager = shared_variable_manager
         self.hardware_interaction = hardware_interaction
         parameters = args.import_args(yaml_path=gc.CONFIG_FOLDER_PATH + 'microphone_listener.yaml', **kwargs)
-        self.device_index = parameters['device_index']
-        self.vendor_id = parameters['vendor_id']
-        self.product_id = parameters['product_id']
         self.verbose = parameters['verbose']
-        self.microphone = None
-        self.microphone = tuning.find(vid=self.vendor_id, pid=self.product_id)
-        if self.microphone:
-            if self.verbose >= 1:
-                print('Microphone opened.')
-        else:
-            raise RuntimeError(f'Failed to initialize microphone with VID: {self.vendor_id}, PID: {self.product_id}')
+
+        # Audio source: the microphone stream served by the RDK X3 over the wired link.
+        self.mic_client = MicStreamClient(verbose=self.verbose)
+
         self.current_recording = None
+        self.recording = False
         self.silence_timestamp = None
         self.start_recording_timestamp = None
         # duration in seconds after which a recording is stopped if no voice is detected
         self.max_silence_duration = parameters['max_silence_duration']
         self.min_sentence_duration = parameters['min_sentence_duration']
-        self.pa = pyaudio.PyAudio()
-        self.audio_stream = None
+        # describes the received PCM (must match the RDK X3 mic stream), used to package the in-memory WAV
         self.stream_params = parameters['stream_params']
         self.save_file = parameters['save_file']
         self.led_intensity = parameters['led_intensity']
 
     def listen(self):
         """
-        Listening to the microphone
-        If a voice is detected using self.microphone.is_voice():
-            - start/keep recording using the pyaudio library
-        If no voice is detected for self.max_silence_duration seconds:
-            - stop recording
-            - save the audio data
-            - resume listening
+        Reads frames (audio chunk + VAD flag) from the RDK X3 microphone stream.
+        While voice is detected:
+            - start/keep recording, accumulating the received audio.
+        When no voice is detected for self.max_silence_duration seconds:
+            - stop recording, package the audio, and hand it to the reasoning service.
         """
-
-        self.audio_stream = self.pa.open(
-            format=self.pa.get_format_from_width(self.stream_params['width']),
-            channels=self.stream_params['channels'],
-            rate=self.stream_params['sample_rate'],
-            frames_per_buffer=self.stream_params['chunk_size'],
-            input_device_index=self.device_index,
-            input=True,
-            start=False,
-        )
         if self.verbose >= 2:
-            print('Starting to listen to the microphone...')
+            print('Starting to listen to the microphone stream from the RDK X3...')
 
         while True:
-            if self.microphone.is_voice():
+            is_voice, pcm_bytes = self.mic_client.read_frame()
+            if is_voice:
                 self.silence_timestamp = None
-                if self.audio_stream.is_stopped():
+                if not self.recording:
                     self.start_recording()
-                else:
-                    # Set RGB LED to green
-                    self.hardware_interaction.rgb_led(red=0, green=self.led_intensity, blue=0)
-                    self.current_recording.append(self.audio_stream.read(
-                        num_frames=self.stream_params['chunk_size'],
-                        exception_on_overflow=False
-                    ))
+                # Set RGB LED to green
+                self.hardware_interaction.rgb_led(red=0, green=self.led_intensity, blue=0)
+                if pcm_bytes:
+                    self.current_recording.append(pcm_bytes)
             else:  # no voice detected
-                if self.audio_stream.is_active():
+                if self.recording:
                     # Set RGB LED to orange
                     self.hardware_interaction.rgb_led(red=self.led_intensity, green=self.led_intensity, blue=0)
                     if self.silence_timestamp is None:
                         self.silence_timestamp = time.time()
                     if (time.time() - self.silence_timestamp) >= self.max_silence_duration:
                         self.stop_recording(save_file=self.save_file)
-                else:
-                    time.sleep(0.05)
 
     def start_recording(self):
         """
-        Starts recording audio from the microphone.
+        Starts a new recording.
         """
         # Set RGB LED to green
         self.hardware_interaction.rgb_led(red=0, green=self.led_intensity, blue=0)
         self.current_recording = []
+        self.recording = True
         self.start_recording_timestamp = time.time()
-        self.audio_stream.start_stream()
         if self.verbose >= 3:
             print('Voice detected, starting recording...')
 
     def stop_recording(self, save_file: bool = False):
         """
-        Stops the current recording and saves the audio data.
+        Stops the current recording and, if it is long enough, hands the audio to the reasoning service.
         """
         # Set RGB LED to red
         self.hardware_interaction.rgb_led(red=self.led_intensity, green=0, blue=0)
-        self.audio_stream.stop_stream()
+        self.recording = False
         if self.verbose >= 3:
             print('No voice detected for a while, stop recording...')
 
@@ -165,14 +141,10 @@ class MicrophoneListener:
 
     def __del__(self):
         """
-        Closes the microphone interface and releases resources.
+        Closes the microphone stream and releases resources.
         """
         self.shared_variable_manager.remove_from(queue_name='running_components', value='microphone_listener')
-        if self.audio_stream is not None:
-            self.audio_stream.stop_stream()
-            self.audio_stream.close()
-        self.pa.terminate()
-        if self.microphone:
-            self.microphone.close()
+        if self.mic_client is not None:
+            self.mic_client.close()
         if self.verbose >= 1:
             print('Microphone listener closed.')

@@ -30,11 +30,14 @@ def main_thread(**kwargs):
     hardware_interaction = HardwareInteraction(shared_variable_manager=shared_variable_manager, verbose=verbose)
 
     # The Google voice interaction (microphone -> Google AI reasoning -> TTS -> speaker playback) is gated behind
-    # a single switch. The microphone and speakers now live on the RDK X3 main board, and the Google API this
-    # feature uses has changed and needs reworking, so it is disabled for now (see main_thread.yaml).
+    # a single switch. The microphone and speakers now live on the RDK X3 main board, reached over the wired
+    # link (mic stream in, TTS playback out). The Google API this feature uses has changed and needs reworking,
+    # so it is disabled for now (see main_thread.yaml).
+    speaker_client = None
     if enable_voice_interaction:
         from google_ai_studio import service_interface
         from sensors.microphone.microphone_listener import MicrophoneListener
+        from ethernet_connection.speaker_client import SpeakerClient
 
         # Initialize the Google AI Studio service interface
         google_ai_studio_service = service_interface.GoogleAIStudioService(
@@ -43,13 +46,16 @@ def main_thread(**kwargs):
         )
         google_ai_studio_service.start_services()
 
-        # Initialize the microphone listener
+        # Initialize the microphone listener (receives the RDK X3 microphone stream over the wired link)
         microphone_listener = MicrophoneListener(
             shared_variable_manager=shared_variable_manager,
             hardware_interaction=hardware_interaction,
             verbose=verbose,
         )
         microphone_listener.start_listening()
+
+        # TTS audio is played on the RDK X3 speakers (via the ReSpeaker), sent over the wired link.
+        speaker_client = SpeakerClient(verbose=verbose)
     elif verbose >= 1:
         print('Google voice interaction disabled (enable_voice_interaction=False).')
 
@@ -119,12 +125,8 @@ def main_thread(**kwargs):
             if audio_to_play is not None:
                 if verbose >= 2:
                     print(f'Audio response received.')
-                utils.play_audio(
-                    audio_bytes=audio_to_play,
-                    sample_rate=24000,
-                    channels=1,
-                    dtype='int16',
-                )
+                # The speakers are on the RDK X3 (via the ReSpeaker); send the PCM there to be played.
+                speaker_client.send_audio(audio_to_play)
             else:
                 time.sleep(0.2)
         else:
