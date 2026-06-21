@@ -1,6 +1,5 @@
 import wave
 import numpy as np
-import sounddevice as sd
 from pathlib import Path
 
 import global_constants as gc
@@ -35,6 +34,10 @@ def play_audio(audio_bytes: bytes, sample_rate: int, dtype: str, channels: int):
     """
 
     try:
+        # Imported lazily so the rest of utils (used by the arm-camera/ethernet path) loads even when the
+        # sounddevice library is not installed, which is the case once the speakers move off the Jetson.
+        import sounddevice as sd
+
         # Convert bytes to a numpy array of the specified data type
         # We assume little-endian byte order based on common L16 implementations.
         audio_array = np.frombuffer(audio_bytes, dtype=dtype)

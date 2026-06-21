@@ -4,3 +4,10 @@
 #   INFO = 2
 #   DEBUG = 3
 verbose: 3
+
+# Master switch for the Google voice interaction (microphone listening -> Google AI reasoning -> TTS -> speaker
+# playback). The microphone and speakers are physically connected to the RDK X3 main board (not the Jetson), and
+# the Google API this feature relies on has changed and needs reworking, so it is disabled for now.
+# When False, the arm-camera streaming and the ethernet command channel keep working normally, and the
+# voice-only libraries (google genai, pyaudio, sounddevice) are never imported.
+enable_voice_interaction: False

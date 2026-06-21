@@ -4,13 +4,14 @@ import threading
 import args
 import utils
 import global_constants as gc
-from google_ai_studio import service_interface
 from sensors.camera.usb_camera import UsbCamera
 from hardware_interaction import HardwareInteraction
 from thread_shared_variables import SharedVariableManager
 from ethernet_connection.ethernet_client import EthernetClient
 from ethernet_connection.frame_streamer import FrameStreamerClient
-from sensors.microphone.microphone_listener import MicrophoneListener
+# The Google voice interaction components (service_interface, MicrophoneListener) are imported lazily inside
+# main_thread(), only when enable_voice_interaction is True, so their dependencies (google genai, pyaudio,
+# sounddevice) are not required when the feature is disabled.
 
 
 def main_thread(**kwargs):
@@ -20,6 +21,7 @@ def main_thread(**kwargs):
     """
     parameters = args.import_args(yaml_path=gc.CONFIG_FOLDER_PATH + 'main_thread.yaml', **kwargs)
     verbose = parameters['verbose']
+    enable_voice_interaction = parameters['enable_voice_interaction']
 
     # Initialize the shared variable manager
     shared_variable_manager = SharedVariableManager(verbose=verbose)
@@ -27,20 +29,29 @@ def main_thread(**kwargs):
     # Initialize the hardware interaction interface
     hardware_interaction = HardwareInteraction(shared_variable_manager=shared_variable_manager, verbose=verbose)
 
-    # Initialize the Google AI Studio service interface
-    google_ai_studio_service = service_interface.GoogleAIStudioService(
-        shared_variable_manager=shared_variable_manager,
-        verbose=verbose,
-    )
-    google_ai_studio_service.start_services()
+    # The Google voice interaction (microphone -> Google AI reasoning -> TTS -> speaker playback) is gated behind
+    # a single switch. The microphone and speakers now live on the RDK X3 main board, and the Google API this
+    # feature uses has changed and needs reworking, so it is disabled for now (see main_thread.yaml).
+    if enable_voice_interaction:
+        from google_ai_studio import service_interface
+        from sensors.microphone.microphone_listener import MicrophoneListener
 
-    # Initialize the microphone listener
-    microphone_listener = MicrophoneListener(
-        shared_variable_manager=shared_variable_manager,
-        hardware_interaction=hardware_interaction,
-        verbose=verbose,
-    )
-    microphone_listener.start_listening()
+        # Initialize the Google AI Studio service interface
+        google_ai_studio_service = service_interface.GoogleAIStudioService(
+            shared_variable_manager=shared_variable_manager,
+            verbose=verbose,
+        )
+        google_ai_studio_service.start_services()
+
+        # Initialize the microphone listener
+        microphone_listener = MicrophoneListener(
+            shared_variable_manager=shared_variable_manager,
+            hardware_interaction=hardware_interaction,
+            verbose=verbose,
+        )
+        microphone_listener.start_listening()
+    elif verbose >= 1:
+        print('Google voice interaction disabled (enable_voice_interaction=False).')
 
     ethernet_client_kwargs = {
         'shared_variable_manager': shared_variable_manager,
@@ -103,16 +114,19 @@ def main_thread(**kwargs):
         # exit()
 
     while True:
-        audio_to_play = shared_variable_manager.pop_from(queue_name='audio_to_play')
-        if audio_to_play is not None:
-            if verbose >= 2:
-                print(f'Audio response received.')
-            utils.play_audio(
-                audio_bytes=audio_to_play,
-                sample_rate=24000,
-                channels=1,
-                dtype='int16',
-            )
+        if enable_voice_interaction:
+            audio_to_play = shared_variable_manager.pop_from(queue_name='audio_to_play')
+            if audio_to_play is not None:
+                if verbose >= 2:
+                    print(f'Audio response received.')
+                utils.play_audio(
+                    audio_bytes=audio_to_play,
+                    sample_rate=24000,
+                    channels=1,
+                    dtype='int16',
+                )
+            else:
+                time.sleep(0.2)
         else:
             time.sleep(0.2)
         time.sleep(0.05)
