@@ -4,6 +4,7 @@ import socket
 import args
 import utils
 import global_constants as gc
+from robot_link import protocol
 
 
 # Formats (as stored in 'latest_camera_image'["format"]) that we can forward to the RDK X3 as-is.
@@ -77,8 +78,7 @@ class FrameStreamerClient:
                     self.close()
                     return
                 jpeg_bytes = self._get_latest_jpeg()
-                length_prefix = len(jpeg_bytes).to_bytes(length=4, byteorder='big')
-                self.socket.sendall(length_prefix + jpeg_bytes)
+                protocol.send_message(self.socket, jpeg_bytes)
                 if self.verbose >= 3:
                     print(f'Frame streamer sent {len(jpeg_bytes)} bytes')
             except Exception as e:

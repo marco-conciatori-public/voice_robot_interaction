@@ -4,6 +4,7 @@ import socket
 import args
 import utils
 import global_constants as gc
+from robot_link import protocol
 
 
 class SpeakerClient:
@@ -56,8 +57,7 @@ class SpeakerClient:
                     print('Speaker client not connected, dropping audio chunk.')
                 return
         try:
-            length_prefix = len(pcm_bytes).to_bytes(length=4, byteorder='big')
-            self.socket.sendall(length_prefix + pcm_bytes)
+            protocol.send_message(self.socket, pcm_bytes)
             if self.verbose >= 3:
                 print(f'Speaker client sent {len(pcm_bytes)} bytes')
         except socket.error as e:

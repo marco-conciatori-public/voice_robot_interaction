@@ -4,17 +4,7 @@ import socket
 import args
 import utils
 import global_constants as gc
-
-
-def _recv_exactly(sock, num_bytes: int):
-    """Receive exactly num_bytes, or None if the peer closed the connection before all bytes arrived."""
-    buffer = b''
-    while len(buffer) < num_bytes:
-        chunk = sock.recv(num_bytes - len(buffer))
-        if not chunk:
-            return None
-        buffer += chunk
-    return buffer
+from robot_link import protocol
 
 
 class MicStreamClient:
@@ -60,19 +50,11 @@ class MicStreamClient:
             if self.socket is None:
                 self._connect()
             try:
-                header = _recv_exactly(self.socket, 5)
-                if header is None:
+                frame = protocol.recv_audio_frame(self.socket)
+                if frame is None:
                     self.close()
                     continue
-                is_voice = bool(header[0])
-                pcm_length = int.from_bytes(header[1:5], byteorder='big')
-                if pcm_length == 0:
-                    return is_voice, b''
-                pcm_bytes = _recv_exactly(self.socket, pcm_length)
-                if pcm_bytes is None:
-                    self.close()
-                    continue
-                return is_voice, pcm_bytes
+                return frame  # (is_voice: bool, pcm_bytes: bytes)
             except socket.error as e:
                 utils.print_exception(exception=e, message='Mic stream client read error')
                 self.close()
