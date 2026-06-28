@@ -3,6 +3,10 @@ import numpy as np
 from pathlib import Path
 
 import global_constants as gc
+# pretty_print_dict / print_exception are shared with the RDK X3 via robot_link; re-exported
+# here so existing utils.pretty_print_dict(...) / utils.print_exception(...) call sites keep working.
+# (This also fixes the old local print_exception, whose message/None branches were inverted.)
+from robot_link.common import pretty_print_dict, print_exception
 
 
 def get_api_key(file_path: str) -> str:
@@ -57,19 +61,6 @@ def play_audio(audio_bytes: bytes, sample_rate: int, dtype: str, channels: int):
         print("You might need to install 'PortAudio' development libraries if on Linux/macOS.")
 
 
-def pretty_print_dict(data, _level: int = 0) -> None:
-    if isinstance(data, dict):
-        if _level > 0:
-            print()
-        for key in data:
-            for i in range(_level + 1):
-                print('\t', end='')
-            print(f'{key}: ', end='')
-            pretty_print_dict(data[key], _level=_level + 1)
-    else:
-        print(data)
-
-
 def save_wave_file(file_path: str, byte_data, channels=1, rate=24000, sample_width=2, verbose: int = 0) -> None:
     # Set up the wave file to save the output:
     with wave.open(file_path, mode='wb') as wf:
@@ -79,13 +70,6 @@ def save_wave_file(file_path: str, byte_data, channels=1, rate=24000, sample_wid
         wf.writeframes(byte_data)
     if verbose >= 1:
         print(f'Saved audio file to "{file_path}"')
-
-
-def print_exception(exception: Exception, message: str = None) -> None:
-    if message is None:
-        print(f'{message}:\n\t{exception}\n\t{exception.__traceback__}')
-    else:
-        print(f'Error:\n\t{exception}\n\t{exception.__traceback__}')
 
 
 def get_yaml_path(caller_name: str) -> str:
