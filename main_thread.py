@@ -29,6 +29,25 @@ def main_thread(**kwargs):
     # Initialize the hardware interaction interface
     hardware_interaction = HardwareInteraction(shared_variable_manager=shared_variable_manager, verbose=verbose)
 
+    # External COB LED strip (camera headlight). It physically lives on the Jetson now, driven from a Jetson
+    # GPIO pin via a MOSFET. The RDK X3 stays the control surface and sends on/off/brightness commands over
+    # the command channel; these handlers execute them locally. Imported lazily so the Jetson.GPIO dependency
+    # is only required when the headlight is actually wired up (graceful degradation otherwise).
+    command_handlers = {}
+    try:
+        from headlight import Headlight
+        headlight = Headlight(verbose=verbose)
+        command_handlers = {
+            'headlight_turn_on': headlight.turn_on,
+            'headlight_turn_off': headlight.turn_off,
+            'headlight_toggle': headlight.toggle,
+            'headlight_set_state': headlight.set_state,
+            'headlight_next_level': headlight.next_level,
+        }
+    except Exception as e:
+        utils.print_exception(exception=e, message='Headlight error')
+        headlight = None
+
     # The Google voice interaction (microphone -> Google AI reasoning -> TTS -> speaker playback) is gated behind
     # a single switch. The microphone and speakers now live on the RDK X3 main board, reached over the wired
     # link (mic stream in, TTS playback out). The Google API this feature uses has changed and needs reworking,
@@ -61,6 +80,7 @@ def main_thread(**kwargs):
 
     ethernet_client_kwargs = {
         'shared_variable_manager': shared_variable_manager,
+        'command_handlers': command_handlers,
         'verbose': verbose,
     }
     # Initialize and start Ethernet client
@@ -134,7 +154,9 @@ def main_thread(**kwargs):
         time.sleep(0.05)
 
 
-def keep_restarting_ethernet_client(shared_variable_manager: SharedVariableManager, verbose: int = 0):
+def keep_restarting_ethernet_client(shared_variable_manager: SharedVariableManager,
+                                    command_handlers: dict = None,
+                                    verbose: int = 0):
     """
     Continuously attempts to restart the Ethernet client if it is not running.
     """
@@ -144,6 +166,7 @@ def keep_restarting_ethernet_client(shared_variable_manager: SharedVariableManag
         try:
             ethernet_client = EthernetClient(
                 shared_variable_manager=shared_variable_manager,
+                command_handlers=command_handlers,
                 verbose=verbose,
             )
             ethernet_client.start()

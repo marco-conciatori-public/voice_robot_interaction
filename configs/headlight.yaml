@@ -1,0 +1,38 @@
+# Verbosity levels
+# 0: errors only
+# 1: errors and important information
+# 2: more information
+# 3: debug
+verbose: 2
+
+# --- COB LED strip (external camera headlight), now driven from the Jetson Nano ---
+# The strip is a passive 5V load switched by a MOSFET module whose trigger is driven by this GPIO pin
+# (BOARD numbering). Tie the MOSFET trigger ground to the Jetson ground (a common ground is required).
+#
+# TBD: confirm a free GPIO pin on the expansion board's second 40-pin (pass-through) header before
+# wiring the gate (see the plan's hardware/pin-verification step). The Jetson Nano exposes hardware PWM
+# on pins 32 and 33 (the same numbers the RDK X3 used), but using them requires enabling PWM with
+# jetson-io (a device-tree change + reboot).
+pin: 33
+
+# How to drive the gate:
+#   hardware -> Jetson hardware PWM (pins 32/33 only, jetson-io enabled). Smooth, no CPU cost.
+#   software -> best-effort software PWM (background thread). Any output pin, but uses CPU and can
+#               flicker; use only if no hardware-PWM pin is free.
+#   onoff    -> plain digital output, no brightness (any non-zero level is full on).
+pwm_mode: hardware
+
+# PWM carrier frequency in Hz for hardware mode.
+pwm_frequency: 48000
+
+# Carrier frequency in Hz for software mode only. Python software PWM cannot reach the hardware rate, so
+# keep this low (about 100-200 Hz) to limit CPU use and flicker.
+software_pwm_frequency: 200
+
+# PWM duty cycle (0-100) for each light state. Index 0 is ALWAYS the OFF state (duty 0); the remaining
+# entries are the "on" states the light can cycle through (turn_on() uses index 1, next_level() cycles
+# through all of them). Perceived brightness vs duty depends on the strip, so tune these on the robot.
+brightness_levels:
+  - 0     # OFF
+  - 50    # ON (half)
+  - 100   # ON (full)
