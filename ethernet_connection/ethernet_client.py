@@ -16,8 +16,8 @@ class EthernetClient:
 
         Outgoing (Jetson -> RDK X3): function calls queued in 'functions_to_call' (e.g. arm moves
         produced by the voice interaction) are sent as JSON commands.
-        Incoming (RDK X3 -> Jetson): JSON commands are dispatched to local handlers, e.g. the
-        headlight controls. Unknown commands are logged and ignored.
+        Incoming (RDK X3 -> Jetson): JSON commands are dispatched to local handlers in
+        command_handlers (see main_thread.py). Unknown commands are logged and ignored.
 
         :param shared_variable_manager: instance of SharedVariableManager to manage shared variables.
         :param command_handlers: optional dict {command_name: callable} for commands received from the
