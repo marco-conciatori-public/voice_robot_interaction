@@ -3,6 +3,8 @@ import warnings
 from google import genai
 from google.genai import types
 
+import utils
+
 
 class ReasoningService:
     """
@@ -49,10 +51,11 @@ class ReasoningService:
             image_bytes: the image message to send to the LLM.
 
         Returns:
-            tuple: A tuple containing:
-                - is_function_call (bool): Indicates if the response is a function call.
-                - response: The response from the LLM, which can be either text or a function call with parameters, or
-                 an error message if an exception occurs.
+            tuple: A (text, function_call) pair:
+                - text (str | None): The textual response from the LLM, or None if the response was a function call.
+                - function_call: The function call (with parameters) requested by the LLM, or None if the response was
+                 plain text.
+            On error, returns (None, None) after logging the exception.
         """
         assert audio_bytes is not None or image_bytes is not None, 'Either audio_bytes or image_bytes must be supplied'
         assert audio_bytes is None or image_bytes is None, 'Only one of audio_bytes or image_bytes can be supplied'
@@ -105,4 +108,5 @@ class ReasoningService:
             return text, function_call
 
         except Exception as e:
-            return False, f'An error occurred:\n{e}'
+            utils.print_exception(exception=e, message='Error during reasoning')
+            return None, None
