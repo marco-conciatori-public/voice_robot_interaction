@@ -10,4 +10,4 @@ verbose: 3
 # the Google API this feature relies on has changed and needs reworking, so it is disabled for now.
 # When False, the arm-camera streaming and the ethernet command channel keep working normally, and the
 # voice-only libraries (google genai, pyaudio, sounddevice) are never imported.
-enable_voice_interaction: False
+enable_voice_interaction: True
