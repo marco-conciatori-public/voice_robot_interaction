@@ -4,11 +4,12 @@ verbose: 0
 # VAD over the wired link; the connection settings are in mic_stream_client.yaml. The audio identification
 # numbers and device index are no longer needed here (the RDK X3 owns the device).
 
-# if a voice was detected and a recording started, if no voice is detected for this duration, the recording
-# will stop (in seconds)
-max_silence_duration: 2
-# recordings shorter than this duration (seconds) will be discarded
-min_sentence_duration: 1
+# Push-to-talk: the recording window is the button hold, so there is no voice-activity detection.
+# Recordings shorter than this (seconds) are dropped as accidental taps.
+min_recording_duration: 0.7
+# Safety cap (seconds): a clip is force-finalized if a button release is ever missed (stuck button or a
+# dropped connection mid-hold), so recording cannot run forever.
+max_recording_duration: 20
 
 # whether to save audio files recorded by the microphone listener
 save_file: False
