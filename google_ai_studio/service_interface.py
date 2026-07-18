@@ -28,6 +28,10 @@ class GoogleAIStudioService:
         self.use_tts_service = parameters['use_tts_service']
         self.tts_parameters = parameters['tts_parameters']
         self.image_spoilage_time = parameters['image_spoilage_time']
+        # Agentic loop bounds: how many observe-act steps one request may take, and how long to wait
+        # after dispatching a motion before letting the model observe its result.
+        self.max_reasoning_steps = parameters['max_reasoning_steps']
+        self.action_settle_time = parameters['action_settle_time']
         self.verbose = parameters['verbose']
 
         self.reasoning_service = ReasoningService(client=self.client, tools=self.tools, **self.reasoning_parameters)
@@ -35,35 +39,104 @@ class GoogleAIStudioService:
     def run_reasoning_service(self) -> None:
         """
         Continuously processes reasoning requests from the shared variable manager.
-        It sends audio prompts to the Google AI Studio LLM and handles the responses.
+        Each request (a captured audio prompt) is handled with a multi-step observe-act loop.
         """
         while True:
             request = self.shared_variable_manager.pop_from(queue_name='reasoning_requests')
             if request is not None:
-                textual_response, function_call_response = self.reasoning_service.reasoning(**request)
-                if function_call_response is not None:
-                    if function_call_response.name == "get_camera_image":
-                        current_camera_image = self.get_camera_image()
-                        if current_camera_image is not None:
-                            # send a new reasoning request with the latest image (hoping that the model will remember
-                            # the latest user request)
-                            self.shared_variable_manager.add_to(
-                                queue_name='reasoning_requests',
-                                value={'image_bytes': current_camera_image},
-                            )
-                    else:
-                        self.shared_variable_manager.add_to(
-                            queue_name='functions_to_call',
-                            value=function_call_response,
-                        )
-                if textual_response is not None:
-                    if self.use_tts_service:
-                        self.shared_variable_manager.add_to(queue_name='tts_requests', value=textual_response)
-                    elif self.verbose >= 1:
-                        print(textual_response)
+                self._handle_reasoning_request(request)
             else:
                 time.sleep(0.2)
             time.sleep(0.02)
+
+    def _handle_reasoning_request(self, request: dict) -> None:
+        """
+        Drive one user request to completion through the observe-act loop.
+
+        The model can call functions (arm/wheel moves dispatched to the RDK X3, or get_camera_image
+        served locally). After each call its result is fed back so the model can look again and act
+        again, until it produces a plain-text answer or the step budget runs out. Only the final
+        textual answer is spoken; intermediate narration is printed when verbose.
+        """
+        # When history is not persisted across requests, start each one from a clean transcript.
+        if not self.reasoning_service.remember_history:
+            self.reasoning_service.reset_history()
+
+        try:
+            next_contents = [self.reasoning_service.build_user_content(**request)]
+        except Exception as e:
+            utils.print_exception(exception=e, message='Invalid reasoning request')
+            return
+
+        final_text = None
+        reached_final_answer = False
+        for step in range(self.max_reasoning_steps):
+            text, function_call = self.reasoning_service.send(next_contents)
+            if function_call is None:
+                # No further action requested: this is the model's final answer (or an error -> None).
+                final_text = text
+                reached_final_answer = True
+                break
+            if self.verbose >= 1 and text:
+                print(f'(reasoning step {step}) {text}')
+            next_contents = self._execute_function_call(function_call)
+
+        if not reached_final_answer and self.verbose >= 1:
+            print(f'Reasoning stopped after reaching max_reasoning_steps ({self.max_reasoning_steps}).')
+
+        if final_text is not None:
+            if self.use_tts_service:
+                self.shared_variable_manager.add_to(queue_name='tts_requests', value=final_text)
+            elif self.verbose >= 1:
+                print(final_text)
+
+    def _execute_function_call(self, function_call) -> list:
+        """
+        Execute one function call and build the tool-response Content(s) to feed back to the model.
+
+        get_camera_image is served locally: the fresh arm-camera frame is returned to the model as an
+        image. Every other function is a robot actuator command dispatched to the RDK X3 over the
+        command channel (fire-and-forget, no result comes back), so the model is simply told it was
+        dispatched and is expected to observe the effect with a follow-up get_camera_image.
+        """
+        name = function_call.name
+        args = dict(function_call.args) if function_call.args else {}
+        image_mime_type = self.reasoning_service.image_mime_type
+
+        if name == 'get_camera_image':
+            image = self.get_camera_image()
+            if image is not None:
+                return [
+                    types.Content(role='tool', parts=[
+                        types.Part.from_function_response(name=name, response={'status': 'ok'}),
+                    ]),
+                    types.Content(role='user', parts=[
+                        types.Part.from_bytes(data=image, mime_type=image_mime_type),
+                        types.Part.from_text(text='This is the current view from the arm camera.'),
+                    ]),
+                ]
+            return [types.Content(role='tool', parts=[
+                types.Part.from_function_response(
+                    name=name,
+                    response={'status': 'error', 'message': 'No fresh camera image available.'},
+                ),
+            ])]
+
+        # Any other function is a robot actuator command handled on the RDK X3.
+        self.shared_variable_manager.add_to(queue_name='functions_to_call', value=function_call)
+        self._wait_for_action(args)
+        return [types.Content(role='tool', parts=[
+            types.Part.from_function_response(name=name, response={'status': 'dispatched'}),
+        ])]
+
+    def _wait_for_action(self, args: dict) -> None:
+        """Give a dispatched motion time to complete before the model observes its result."""
+        settle = self.action_settle_time
+        duration = args.get('duration')
+        if isinstance(duration, (int, float)):
+            settle += duration
+        if settle > 0:
+            time.sleep(settle)
 
     def run_tts_service(self) -> None:
         """

@@ -8,7 +8,13 @@ import utils
 
 class ReasoningService:
     """
-    This class provides a service for reasoning with the Google AI Studio LLM.
+    Talks to the Google AI Studio LLM for one conversation.
+
+    This object only handles the model I/O: it keeps a running transcript (a list of types.Content
+    alternating user / model / tool turns) and exposes low-level primitives so a caller can drive a
+    multi-step "observe, act, observe again" loop. Executing the function calls (dispatching robot
+    commands, capturing camera frames) is the caller's job, because that needs hardware / network
+    access this class deliberately knows nothing about.
     """
     def __init__(self,
                  client: genai.Client,
@@ -24,8 +30,8 @@ class ReasoningService:
         :param client: genai.Client: The Google AI Studio client to use for generating responses.
         :param model_name: str: The model to use for generating the response.
         :param tools: types.Tool: Optional tools to use for the reasoning process, default is None.
-        :param prompt_template: str: The template for the prompt, which can include instructions or context.
-        :param remember_history: bool: Whether to remember the history of interactions, default is False.
+        :param prompt_template: str: System instruction sent once to the model (not repeated each turn).
+        :param remember_history: bool: Whether to keep the transcript across separate user requests, default is False.
         :param audio_mime_type: str: The MIME type of the audio data, default is 'audio/wav'.
         :param image_mime_type: str: The MIME type of the image data, default is 'image/jpeg'.
         """
@@ -33,71 +39,70 @@ class ReasoningService:
         self.client = client
         self.model_name = model_name
         self.tools = tools if tools is not None else types.Tool(function_declarations=[])
-        self.config = types.GenerateContentConfig(tools=[self.tools])
         self.prompt_template = prompt_template
         self.remember_history = remember_history
         self.audio_mime_type = audio_mime_type
         self.image_mime_type = image_mime_type
 
-        if self.remember_history:
-            self.chat = client.chats.create(model=self.model_name, config=self.config)
+        # The system prompt is delivered once as system_instruction rather than being prepended to
+        # every user turn (which is what the old single-shot code did).
+        self.config = types.GenerateContentConfig(
+            tools=[self.tools],
+            system_instruction=self.prompt_template if self.prompt_template else None,
+        )
+        # Running transcript of the current exchange. When remember_history is True it also carries
+        # over between user requests; otherwise the caller resets it (reset_history) each time.
+        self.contents = []
 
-    def reasoning(self, audio_bytes: bytes = None, image_bytes: bytes = None, **kwargs) -> tuple:
+    def reset_history(self) -> None:
+        """Drop the transcript so the next request starts a fresh conversation."""
+        self.contents = []
+
+    def build_user_content(self, audio_bytes: bytes = None, image_bytes: bytes = None) -> types.Content:
         """
-        Sends an audio message or image to the Google AI Studio LLM and returns the response.
+        Wrap a raw audio or image prompt into a user-role Content ready to send.
+
+        Exactly one of audio_bytes / image_bytes must be supplied.
+        """
+        assert (audio_bytes is None) != (image_bytes is None), \
+            'Exactly one of audio_bytes or image_bytes must be supplied'
+        if audio_bytes is not None:
+            part = types.Part.from_bytes(data=audio_bytes, mime_type=self.audio_mime_type)
+        else:
+            part = types.Part.from_bytes(data=image_bytes, mime_type=self.image_mime_type)
+        return types.Content(role='user', parts=[part])
+
+    def send(self, new_contents: list) -> tuple:
+        """
+        Append new_contents to the transcript, query the model once, and return its reply.
 
         Args:
-            audio_bytes: the audio message to send to the LLM.
-            image_bytes: the image message to send to the LLM.
+            new_contents: a list of types.Content to add before querying (the user input on the first
+                step, or the tool responses to the model's previous function call on later steps).
 
         Returns:
-            tuple: A (text, function_call) pair:
-                - text (str | None): The textual response from the LLM, or None if the response was a function call.
-                - function_call: The function call (with parameters) requested by the LLM, or None if the response was
-                 plain text.
-            On error, returns (None, None) after logging the exception.
+            tuple (text, function_call):
+                - text (str | None): the model's textual reply, or None if it only made a function call.
+                - function_call: the function call the model requested, or None if it replied with text.
+            The model's reply is appended to the transcript so the next send() continues the exchange.
+            On error, returns (None, None) after logging the exception (the failed turn is rolled back
+            so the transcript stays consistent).
         """
-        assert audio_bytes is not None or image_bytes is not None, 'Either audio_bytes or image_bytes must be supplied'
-        assert audio_bytes is None or image_bytes is None, 'Only one of audio_bytes or image_bytes can be supplied'
+        turn_start = len(self.contents)
         try:
-            chosen_input = None
-            if audio_bytes is not None:
-                if self.prompt_template is None:
-                    chosen_input = [types.Part.from_bytes(data=audio_bytes, mime_type=self.audio_mime_type)]
-                else:
-                    chosen_input = [self.prompt_template, types.Part.from_bytes(
-                        data=audio_bytes,
-                        mime_type=self.audio_mime_type,
-                    )]
-            elif image_bytes is not None:
-                if self.prompt_template is None:
-                    chosen_input = [types.Part.from_bytes(data=image_bytes, mime_type=self.image_mime_type)]
-                else:
-                    chosen_input = [self.prompt_template, types.Part.from_bytes(
-                        data=image_bytes,
-                        mime_type=self.image_mime_type,
-                    )]
-
-            if self.remember_history:
-                if self.chat is None:
-                    raise ValueError("Chat history is enabled but chat object is not initialized.")
-                response = self.chat.send_message(chosen_input)
-            else:  # without history
-                if self.config is None:  # without config
-                    response = self.client.models.generate_content(
-                        model=self.model_name,
-                        contents=chosen_input,
-                    )
-                else:  # with config
-                    response = self.client.models.generate_content(
-                        model=self.model_name,
-                        contents=chosen_input,
-                        config=self.config,
-                    )
+            self.contents.extend(new_contents)
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=self.contents,
+                config=self.config,
+            )
+            candidate = response.candidates[0]
+            # Keep the model's turn (which may carry a function call) in the transcript.
+            self.contents.append(candidate.content)
 
             text = None
             function_call = None
-            for part in response.candidates[0].content.parts:
+            for part in candidate.content.parts:
                 if part.text:
                     text = part.text
                 elif part.function_call:
@@ -108,5 +113,7 @@ class ReasoningService:
             return text, function_call
 
         except Exception as e:
+            # Roll back the half-finished turn so a later request does not inherit a dangling input.
+            del self.contents[turn_start:]
             utils.print_exception(exception=e, message='Error during reasoning')
             return None, None
