@@ -222,10 +222,26 @@ class GoogleAIStudioService:
                     print('TTS service disabled due to an error. From now on, the responses will be printed.')
 
     def get_camera_image(self):
+        """
+        The latest arm camera frame, or None if there is no usable one.
+
+        Both failure cases return None rather than raising, so _execute_function_call can report them back
+        to the model as a tool result and let it retry:
+          - No frame at all. 'latest_camera_image' stays None until the UsbCamera thread captures its first
+            frame, and stays None for the whole run if the camera could not be opened. Without this check a
+            request arriving in that window raised TypeError ('NoneType' is not subscriptable), which
+            propagated out of the unguarded run_reasoning_service loop and silently killed the reasoning
+            thread: voice interaction then stopped working until the process was restarted.
+          - Stale frame. The camera thread has stopped refreshing it, so acting on it would mean acting on
+            what the robot saw seconds ago.
+        """
         image_dict = self.shared_variable_manager.get_variable(variable_name='latest_camera_image')
-        if time.time() - image_dict['timestamp'] < self.image_spoilage_time:
-            return image_dict['image']
-        else:
-            warnings.warn(f'Image is too old ({time.time() - image_dict["timestamp"]} s). Please wait for a new image'
-                          f' to be captured')
+        if image_dict is None:
+            warnings.warn('No camera image available yet: the USB camera has not produced a frame '
+                          '(it may still be starting up, or it failed to open).')
             return None
+        image_age = time.time() - image_dict['timestamp']
+        if image_age >= self.image_spoilage_time:
+            warnings.warn(f'Image is too old ({image_age} s). Please wait for a new image to be captured')
+            return None
+        return image_dict['image']
