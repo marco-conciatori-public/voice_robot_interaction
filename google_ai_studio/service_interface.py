@@ -40,13 +40,26 @@ class GoogleAIStudioService:
         """
         Continuously processes reasoning requests from the shared variable manager.
         Each request (a captured audio prompt) is handled with a multi-step observe-act loop.
+
+        One failed request must never take the service down with it. This loop is the whole body of the
+        reasoning thread, so any exception escaping it ends that thread for the rest of the run: voice
+        interaction would stop working with nothing logged, and main_thread would still list
+        'reasoning_service' in running_components because nothing tells it otherwise. Any unexpected error
+        is therefore logged and the loop moves on to the next request. The failed request has already been
+        popped, so it is dropped rather than retried forever.
+        Exception (not a bare except) so KeyboardInterrupt and SystemExit still propagate and can stop the
+        process normally.
         """
         while True:
-            request = self.shared_variable_manager.pop_from(queue_name='reasoning_requests')
-            if request is not None:
-                self._handle_reasoning_request(request)
-            else:
-                time.sleep(0.2)
+            try:
+                request = self.shared_variable_manager.pop_from(queue_name='reasoning_requests')
+                if request is not None:
+                    self._handle_reasoning_request(request)
+                else:
+                    time.sleep(0.2)
+            except Exception as e:
+                utils.print_exception(exception=e, message='Error handling reasoning request. The request was '
+                                                           'dropped, the reasoning service is still running')
             time.sleep(0.02)
 
     def _handle_reasoning_request(self, request: dict) -> None:
