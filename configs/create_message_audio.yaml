@@ -1,0 +1,33 @@
+# Config for scripts/create_message_audio.py, a development-machine helper that records one spoken
+# message into assets/ using the same Gemini voice the robot speaks with. It never runs on the Jetson.
+#
+# Run the script from the IDE with no arguments and everything is taken from here. Single values can
+# also be overridden on the command line, which is the handy way to use it:
+#   python scripts/create_message_audio.py --text "Battery low." --output_file_name battery_low.wav
+
+# verbosity levels:
+#   ERROR = 0
+#   WARNING = 1
+#   INFO = 2
+#   DEBUG = 3
+verbose: 2
+
+# The sentence for the robot to say. Punctuation matters, the TTS model uses it for phrasing.
+text: Sorry, I cannot think right now. My reasoning service has reached its request limit.
+
+# Name of the file created in assets/. Keep the .wav extension.
+output_file_name: new_message.wav
+
+# Refuse to replace a file that already exists, so an asset the robot depends on is not lost by a
+# forgotten output_file_name. Change it here rather than on the command line: the shared config loader
+# types CLI values with type(default), and bool('False') is True, so '--overwrite False' would enable it.
+overwrite: False
+
+# Where the voice comes from, relative to the project root. Only the 'tts_parameters' block is read
+# (model_name / voice_name), so a recording made here always matches what the robot itself would say.
+# Point this elsewhere only to record in a voice the robot does not use.
+tts_config_file: configs/service_interface.yaml
+
+# Gemini API key, relative to the project root. Kept separate from the api_key_file_path in
+# service_interface.yaml because that one is an absolute Jetson path that does not exist here.
+api_key_file: google_ai_studio/gemini_api_key.txt
