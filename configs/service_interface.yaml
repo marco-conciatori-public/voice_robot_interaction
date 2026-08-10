@@ -50,3 +50,22 @@ tts_parameters:
   voice_name: enceladus
 #  voice_name: kore
   save_file: False
+
+# What happens when the TTS model answers 429. On the free tier that is usually the per-minute rate
+# limit, which clears by itself, so TTS goes quiet for a cooldown instead of being disabled for the
+# whole run. The retryDelay the server asks for wins when the error carries one.
+tts_rate_limit:
+  # Wait (seconds) used when the 429 carries no retryDelay.
+  default_cooldown: 60
+  # Ceiling for the wait. Also used directly when the 429 names a per-day quota, which will not clear
+  # within any sensible cooldown.
+  max_cooldown: 900
+  # The wait is multiplied by this once per consecutive failure, so a limit that keeps being hit backs
+  # off instead of retrying at a fixed rate. Reset by the first call that succeeds.
+  backoff_factor: 2
+  # Minimum gap (seconds) between two spoken notices, so the robot does not repeat itself once per
+  # cooldown.
+  min_notice_interval: 300
+  # Pre-recorded clip played when TTS goes quiet, looked up in the assets folder. It must already be
+  # mono 16 bit at the speaker sample rate (24 kHz). Leave empty to announce nothing.
+  notice_audio_file_name: TTS_request_limit.wav
