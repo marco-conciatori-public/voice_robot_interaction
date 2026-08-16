@@ -1,3 +1,8 @@
+# main_thread.py passes its own verbosity in as a keyword argument, which wins over this value. It is
+# still needed here so that constructing EthernetClient on its own (a script, a test) works without
+# it, which is what the zero-argument IDE run relies on everywhere else.
+verbose: 0
+
 host: '192.168.10.11'
 port: 65432
 

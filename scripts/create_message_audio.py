@@ -1,9 +1,14 @@
 """
 Record one spoken message into assets/, in the same Gemini voice the robot speaks with.
 
-Development-machine helper, not robot code: the Jetson only ever *plays* these files (see
-GoogleAIStudioService._play_rate_limit_notice), it never creates them. Nothing here is imported by
+Development-machine helper, not robot code: the Jetson only ever *plays* these files (it loads them at
+startup into GoogleAIStudioService.notice_audio), it never creates them. Nothing here is imported by
 main_thread.py, and it is the only script in the repo that is expected to run off the robot.
+
+Which clips the robot expects, and what each one is for, is listed in the 'audio_notices' block of
+configs/service_interface.yaml. The wording of the ones already recorded is kept in the commented
+'text' lines of configs/create_message_audio.yaml, so a clip can be re-recorded without inventing it
+again.
 
 Two things make the result usable by the robot rather than merely correct-sounding:
 
@@ -31,10 +36,12 @@ def find_project_root() -> Path:
     """
     The repository root, found by walking up from this file until a project marker appears.
 
-    Deliberately not global_constants.PROJECT_FOLDER_PATH: that is the absolute path the code lives at
-    on the robot ('/home/jetson/GIT/voice_robot_interaction/'), which does not exist on the machine
-    this script runs on. Walking up from __file__ also means the script behaves the same whether the
-    IDE launches it with the working directory at the project root or at scripts/.
+    global_constants knows this already, but it cannot answer the question yet: importing it is exactly
+    what needs the root to be on sys.path. So the root is found once here for the bootstrap below, and
+    global_constants is the source of truth for the folders inside it from then on.
+
+    Walking up from __file__ also means the script behaves the same whether the IDE launches it with
+    the working directory at the project root or at scripts/.
     """
     start = Path(__file__).resolve().parent
     for candidate in [start, *start.parents]:
@@ -54,6 +61,7 @@ from google import genai  # noqa: E402
 
 import args  # noqa: E402
 import utils  # noqa: E402
+import global_constants as gc  # noqa: E402
 from robot_link import endpoints  # noqa: E402
 from google_ai_studio import tts_service  # noqa: E402
 
@@ -80,7 +88,8 @@ def create_message_audio(**kwargs) -> Path:
     output_file_name = parameters['output_file_name']
     if not output_file_name.lower().endswith('.wav'):
         raise ValueError(f'output_file_name must end in .wav, got "{output_file_name}".')
-    output_path = PROJECT_ROOT / 'assets' / output_file_name
+    # The same folder the robot loads its notices from, so a clip lands where it will be looked for.
+    output_path = Path(gc.ASSETS_FOLDER_PATH) / output_file_name
     if output_path.exists() and not parameters['overwrite']:
         raise FileExistsError(f'"{output_path}" already exists. Choose another output_file_name, or set '
                               f'"overwrite: True" in configs/create_message_audio.yaml to replace it.')
