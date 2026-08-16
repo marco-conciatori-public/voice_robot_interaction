@@ -72,6 +72,20 @@ def save_wave_file(file_path: str, byte_data, channels=1, rate=24000, sample_wid
         print(f'Saved audio file to "{file_path}"')
 
 
+def read_wave_file(file_path: str) -> tuple:
+    """
+    Reads a WAV file, returning (frames, channels, sample_width, frame_rate).
+
+    Counterpart of save_wave_file. Only the PCM frames come back, without the 44-byte header, which is
+    what the speaker path needs: the RDK X3 writes whatever it receives straight to ALSA without parsing
+    it, so a header sent along with the audio would be played as a burst of noise. The format is returned
+    alongside rather than checked here, because what counts as correct depends on where the audio is
+    going, not on the file.
+    """
+    with wave.open(file_path, mode='rb') as wf:
+        return wf.readframes(wf.getnframes()), wf.getnchannels(), wf.getsampwidth(), wf.getframerate()
+
+
 def get_yaml_path(caller_name: str) -> str:
     file_name_no_extension = Path(caller_name).resolve().stem
     yaml_path = gc.CONFIG_FOLDER_PATH + file_name_no_extension + '.yaml'

@@ -3,8 +3,6 @@ import warnings
 from google import genai
 from google.genai import types
 
-import utils
-
 
 class ReasoningService:
     """
@@ -85,8 +83,12 @@ class ReasoningService:
                 - text (str | None): the model's textual reply, or None if it only made a function call.
                 - function_call: the function call the model requested, or None if it replied with text.
             The model's reply is appended to the transcript so the next send() continues the exchange.
-            On error, returns (None, None) after logging the exception (the failed turn is rolled back
-            so the transcript stays consistent).
+
+        Raises:
+            Whatever the API call raised, after rolling the failed turn back out of the transcript. The
+            error is not swallowed here because the caller is the only one that can act on it: a 429
+            has to reach the rate-limit guard to start a cooldown, and telling the user that their
+            request was dropped needs the speakers, which this class deliberately knows nothing about.
         """
         turn_start = len(self.contents)
         try:
@@ -112,8 +114,8 @@ class ReasoningService:
 
             return text, function_call
 
-        except Exception as e:
-            # Roll back the half-finished turn so a later request does not inherit a dangling input.
+        except Exception:
+            # Roll back the half-finished turn so a later request does not inherit a dangling input,
+            # then let the error through to the caller (see the docstring).
             del self.contents[turn_start:]
-            utils.print_exception(exception=e, message='Error during reasoning')
-            return None, None
+            raise

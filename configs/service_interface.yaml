@@ -51,10 +51,12 @@ tts_parameters:
 #  voice_name: kore
   save_file: False
 
-# What happens when the TTS model answers 429. On the free tier that is usually the per-minute rate
-# limit, which clears by itself, so TTS goes quiet for a cooldown instead of being disabled for the
-# whole run. The retryDelay the server asks for wins when the error carries one.
-tts_rate_limit:
+# What happens when a Gemini model answers 429, applied separately to the reasoning service and the TTS
+# service (each keeps its own cooldown: they call different models, so exhausting one quota says nothing
+# about the other). On the free tier a 429 is usually the per-minute rate limit, which clears by itself,
+# so the service goes quiet for a cooldown instead of being disabled for the whole run. The retryDelay
+# the server asks for wins whenever the error carries one.
+rate_limit:
   # Wait (seconds) used when the 429 carries no retryDelay.
   default_cooldown: 60
   # Ceiling for the wait. Also used directly when the 429 names a per-day quota, which will not clear
@@ -63,9 +65,32 @@ tts_rate_limit:
   # The wait is multiplied by this once per consecutive failure, so a limit that keeps being hit backs
   # off instead of retrying at a fixed rate. Reset by the first call that succeeds.
   backoff_factor: 2
-  # Minimum gap (seconds) between two spoken notices, so the robot does not repeat itself once per
-  # cooldown.
-  min_notice_interval: 300
-  # Pre-recorded clip played when TTS goes quiet, looked up in the assets folder. It must already be
-  # mono 16 bit at the speaker sample rate (24 kHz). Leave empty to announce nothing.
-  notice_audio_file_name: TTS_request_limit.wav
+  # Minimum gap (seconds) between two spoken notices from the same service. Short on purpose: what it
+  # is there to stop is the robot talking over itself when several requests arrive at once, and a long
+  # gap would leave someone who asks again during a cooldown with no answer at all.
+  min_notice_interval: 20
+
+# Pre-recorded clips for the situations where the robot cannot speak for itself, looked up in the
+# assets folder. None of these can be generated on demand, since the whole point of most of them is
+# that the TTS service is unavailable. Record them with scripts/create_message_audio.py, which is also
+# where the exact wording of each one is kept; they must be mono 16 bit at the speaker sample rate
+# (24 kHz), which that script guarantees. Anything missing or in the wrong format is reported at
+# startup and then simply not played. Leave a value empty to say nothing in that situation.
+#   *_minute_limit    the service hit the per-minute rate limit and is now in a cooldown. Also repeated
+#                     (at most once per min_notice_interval) if a request arrives while it is running.
+#   *_day_limit       the daily quota is gone. Said once, not once per cooldown: it will not come back
+#                     today, so there is nothing further to announce.
+#   *_available       a per-minute cooldown ran out, or a call went through again after a daily one.
+#                     Played without waiting for a request, which is what the *_minute_limit wording
+#                     promises: the user should not have to guess when it is worth asking again.
+#   reasoning_error   a reasoning call failed for a reason other than a quota, and the request was lost.
+#   task_incomplete   the model used up max_reasoning_steps without arriving at an answer.
+audio_notices:
+  reasoning_minute_limit: reasoning_minute_limit.wav
+  reasoning_day_limit: reasoning_day_limit.wav
+  reasoning_available: reasoning_available.wav
+  reasoning_error: reasoning_error.wav
+  tts_minute_limit: TTS_minute_limit.wav
+  tts_day_limit: TTS_day_limit.wav
+  tts_available: TTS_available.wav
+  task_incomplete: task_incomplete.wav

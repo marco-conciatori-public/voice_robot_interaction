@@ -1,6 +1,4 @@
-import re
 import time
-import wave
 import warnings
 import threading
 
@@ -12,62 +10,10 @@ import utils
 import global_constants as gc
 from robot_link import endpoints
 from google_ai_studio import tts_service
+from google_ai_studio import rate_limit_guard
 from google_ai_studio import function_declarations
+from google_ai_studio.rate_limit_guard import RateLimitGuard
 from google_ai_studio.reasoning_service import ReasoningService
-
-# Matches the wait the API asks for in the string form of a 429, e.g. "'retryDelay': '27s'".
-_RETRY_DELAY_PATTERN = re.compile(r'retry[_-]?delay["\']?\s*[:=]\s*["\']?(\d+(?:\.\d+)?)s', re.IGNORECASE)
-
-
-def _find_error_values(payload, wanted_key: str) -> list:
-    """Every value stored under `wanted_key` at any depth of a nested dict/list error payload."""
-    found = []
-    if isinstance(payload, dict):
-        for key, value in payload.items():
-            if key == wanted_key:
-                found.append(value)
-            else:
-                found.extend(_find_error_values(value, wanted_key))
-    elif isinstance(payload, (list, tuple)):
-        for item in payload:
-            found.extend(_find_error_values(item, wanted_key))
-    return found
-
-
-def _parse_retry_delay(exception) -> float:
-    """
-    The wait the API asked for after a 429, in seconds, or 0.0 when the error does not carry one.
-
-    A Gemini 429 body normally includes a google.rpc.RetryInfo entry ('retryDelay': '27s'), and the
-    server knows better than any value hardcoded here. Where exactly that entry sits inside
-    APIError.details has moved between google-genai versions, so the payload is searched by key at any
-    depth, with the string form of the exception as a last resort, rather than depending on one layout.
-    """
-    for value in _find_error_values(getattr(exception, 'details', None), 'retryDelay'):
-        if isinstance(value, (int, float)):
-            return float(value)
-        if isinstance(value, str):
-            match = re.fullmatch(r'(\d+(?:\.\d+)?)s?', value.strip())
-            if match:
-                return float(match.group(1))
-    match = _RETRY_DELAY_PATTERN.search(str(exception))
-    if match:
-        return float(match.group(1))
-    return 0.0
-
-
-def _is_per_day_quota(exception) -> bool:
-    """
-    Whether a 429 is the daily quota rather than the per-minute rate limit.
-
-    Free-tier quota violations name themselves, e.g. 'GenerateRequestsPerDayPerProjectPerModel-FreeTier'
-    against '...PerMinutePerProjectPerModel-FreeTier'. A daily one will not clear within any sensible
-    cooldown, so the caller waits the maximum instead of retrying every minute for the rest of the day.
-    """
-    quota_ids = _find_error_values(getattr(exception, 'details', None), 'quotaId')
-    if any('perday' in str(quota_id).lower() for quota_id in quota_ids):
-        return True
-    return 'perday' in str(exception).lower()
 
 
 class GoogleAIStudioService:
@@ -85,27 +31,84 @@ class GoogleAIStudioService:
         self.use_tts_service = parameters['use_tts_service']
         self.tts_parameters = parameters['tts_parameters']
         self.image_spoilage_time = parameters['image_spoilage_time']
-        # How TTS behaves once the API starts answering 429 (see _enter_tts_cooldown).
-        rate_limit_parameters = parameters['tts_rate_limit']
-        self.tts_default_cooldown = rate_limit_parameters['default_cooldown']
-        self.tts_max_cooldown = rate_limit_parameters['max_cooldown']
-        self.tts_backoff_factor = rate_limit_parameters['backoff_factor']
-        self.tts_min_notice_interval = rate_limit_parameters['min_notice_interval']
-        self.tts_notice_audio_file_name = rate_limit_parameters['notice_audio_file_name']
-        # Runtime rate-limit state. 'use_tts_service' stays the configured intent and is deliberately not
-        # touched here, so "TTS is off because it was switched off" stays distinguishable from "TTS is
-        # quiet because the quota ran out". These are written by the TTS thread and read by the reasoning
-        # thread, but each is a single float assignment, so the GIL is enough and no lock is needed.
-        self._tts_blocked_until = 0.0
-        self._tts_failure_count = 0
-        self._last_tts_notice = 0.0
         # Agentic loop bounds: how many observe-act steps one request may take, and how long to wait
         # after dispatching a motion before letting the model observe its result.
         self.max_reasoning_steps = parameters['max_reasoning_steps']
         self.action_settle_time = parameters['action_settle_time']
         self.verbose = parameters['verbose']
 
+        # One cooldown per service: they call different models, so exhausting one quota says nothing
+        # about the other, and the robot can perfectly well keep thinking while it cannot speak.
+        # 'use_tts_service' stays the configured intent and is deliberately left out of this, so "TTS is
+        # off because it was switched off" stays distinguishable from "TTS is quiet because the quota
+        # ran out".
+        rate_limit_parameters = parameters['rate_limit']
+        self.reasoning_guard = RateLimitGuard(name='reasoning', **rate_limit_parameters)
+        self.tts_guard = RateLimitGuard(name='tts', **rate_limit_parameters)
+        self.notice_audio = self._load_notice_audio(file_names=parameters['audio_notices'])
+
         self.reasoning_service = ReasoningService(client=self.client, tools=self.tools, **self.reasoning_parameters)
+
+    def _load_notice_audio(self, file_names: dict) -> dict:
+        """
+        Read the pre-recorded notice clips into memory once, as bare PCM frames keyed by situation.
+
+        These are what the robot says when it cannot say anything for itself, so none of them can be
+        produced on demand: the answer to "the TTS quota ran out" cannot be another TTS call. Loading
+        them at startup rather than at playback time means a missing or wrongly encoded file is reported
+        while someone is still watching the console, instead of at the one moment it was needed. It also
+        keeps a synchronous SD-card read off the speech path, and they are a couple of MB in total.
+
+        Only the frames are kept, never the file bytes: the RDK X3 writes whatever arrives straight to
+        ALSA without parsing it (audio_bridge_server._serve_speaker_playback), so a WAV header would be
+        played as a burst of noise and a clip in the wrong format would come out at the wrong pitch
+        rather than raising. Anything unusable is reported and stored as None, which _play_notice then
+        skips: a robot that cannot announce its rate limit is much better than one that will not start.
+        """
+        expected_format = (1, 2, endpoints.SPEAKER_SAMPLE_RATE)
+        notice_audio = {}
+        for notice_key, file_name in file_names.items():
+            notice_audio[notice_key] = None
+            if not file_name:
+                continue
+            file_path = gc.ASSETS_FOLDER_PATH + file_name
+            try:
+                pcm_bytes, channels, sample_width, frame_rate = utils.read_wave_file(file_path=file_path)
+            except Exception as e:
+                utils.print_exception(exception=e, message=f'Could not read the "{notice_key}" notice "{file_path}"')
+                continue
+            if (channels, sample_width, frame_rate) != expected_format:
+                warnings.warn(f'"{file_path}" is {frame_rate} Hz, {channels} channel(s), {sample_width * 8} bit, '
+                              f'but the speakers expect {endpoints.SPEAKER_SAMPLE_RATE} Hz mono 16 bit. '
+                              f'The "{notice_key}" notice will not be played. Re-record it with '
+                              f'scripts/create_message_audio.py.')
+                continue
+            notice_audio[notice_key] = pcm_bytes
+
+        missing = [notice_key for notice_key in notice_audio if notice_audio[notice_key] is None]
+        if missing:
+            warnings.warn(f'No usable audio for these notices: {", ".join(missing)}. '
+                          f'The robot will stay silent in those situations.')
+        elif self.verbose >= 2:
+            print(f'Loaded {len(notice_audio)} pre-recorded audio notices.')
+        return notice_audio
+
+    def _play_notice(self, notice_key: str) -> None:
+        """
+        Queue one pre-recorded clip for playback on the RDK X3 speakers.
+
+        Accepts None so callers can hand over whatever a RateLimitGuard returned without checking it
+        first: the guard answers None when this situation does not deserve a notice, which is most of
+        the time, and that has to stay as cheap to handle as the cases that do.
+        """
+        if notice_key is None:
+            return
+        pcm_bytes = self.notice_audio.get(notice_key)
+        if pcm_bytes is None:
+            if self.verbose >= 1:
+                print(f'No usable audio notice for "{notice_key}", staying silent.')
+            return
+        self.shared_variable_manager.add_to(queue_name='audio_to_play', value=pcm_bytes)
 
     def run_reasoning_service(self) -> None:
         """
@@ -127,10 +130,15 @@ class GoogleAIStudioService:
                 if request is not None:
                     self._handle_reasoning_request(request)
                 else:
+                    # Idle passes are what makes the recovery announcement possible: a cooldown running
+                    # out is not an event anything else would notice, and waiting for the next request
+                    # to discover it would mean the user has to guess when to try again.
+                    self._play_notice(self.reasoning_guard.poll_recovery())
                     time.sleep(0.2)
             except Exception as e:
                 utils.print_exception(exception=e, message='Error handling reasoning request. The request was '
                                                            'dropped, the reasoning service is still running')
+                self._play_notice('reasoning_error')
             time.sleep(0.02)
 
     def _handle_reasoning_request(self, request: dict) -> None:
@@ -141,7 +149,18 @@ class GoogleAIStudioService:
         served locally). After each call its result is fed back so the model can look again and act
         again, until it produces a plain-text answer or the step budget runs out. Only the final
         textual answer is spoken; intermediate narration is printed when verbose.
+
+        Every way this can end badly (rate limit, API error, step budget exhausted) has a pre-recorded
+        clip, because the user is standing in front of the robot waiting for an answer and silence is
+        the one response they cannot interpret.
         """
+        if not self.reasoning_guard.available():
+            # Nothing can be done with this request: the model would refuse the call. Holding it would
+            # only mean answering a question minutes after it was asked, so it is dropped, but not in
+            # silence, since the user has just spoken and deserves to know why nothing happens.
+            self._play_notice(self.reasoning_guard.notice_while_blocked())
+            return
+
         # When history is not persisted across requests, start each one from a clean transcript.
         if not self.reasoning_service.remember_history:
             self.reasoning_service.reset_history()
@@ -150,14 +169,21 @@ class GoogleAIStudioService:
             next_contents = [self.reasoning_service.build_user_content(**request)]
         except Exception as e:
             utils.print_exception(exception=e, message='Invalid reasoning request')
+            self._play_notice('reasoning_error')
             return
 
         final_text = None
         reached_final_answer = False
         for step in range(self.max_reasoning_steps):
-            text, function_call = self.reasoning_service.send(next_contents)
+            try:
+                text, function_call = self.reasoning_service.send(next_contents)
+            except Exception as e:
+                self._handle_reasoning_failure(exception=e)
+                return
+            # The call went through, so a cooldown this request had been waiting out is over for good.
+            self._play_notice(self.reasoning_guard.register_success())
             if function_call is None:
-                # No further action requested: this is the model's final answer (or an error -> None).
+                # No further action requested: this is the model's final answer.
                 final_text = text
                 reached_final_answer = True
                 break
@@ -165,14 +191,44 @@ class GoogleAIStudioService:
                 print(f'(reasoning step {step}) {text}')
             next_contents = self._execute_function_call(function_call)
 
-        if not reached_final_answer and self.verbose >= 1:
-            print(f'Reasoning stopped after reaching max_reasoning_steps ({self.max_reasoning_steps}).')
+        if not reached_final_answer:
+            if self.verbose >= 1:
+                print(f'Reasoning stopped after reaching max_reasoning_steps ({self.max_reasoning_steps}).')
+            # The robot has been moving for several steps and then stops with nothing to say, which
+            # looks exactly like a crash from outside. Say that the attempt was given up on instead.
+            self._play_notice('task_incomplete')
 
         if final_text is not None:
             if self._tts_available():
                 self.shared_variable_manager.add_to(queue_name='tts_requests', value=final_text)
-            elif self.verbose >= 1:
-                print(final_text)
+            else:
+                if self.verbose >= 1:
+                    print(final_text)
+                if self.use_tts_service:
+                    # There is an answer and it cannot be spoken. Repeating why (subject to the guard's
+                    # own interval) is the only feedback the user gets, since with TTS in a cooldown
+                    # every question from here on is met with silence.
+                    self._play_notice(self.tts_guard.notice_while_blocked())
+
+    def _handle_reasoning_failure(self, exception) -> None:
+        """
+        Report a failed reasoning call, and put the service to sleep when the API refused it on quota.
+
+        A 429 is not a broken robot, it is a robot that has been asked too many questions too quickly,
+        so the request is the only casualty: the service pauses for a cooldown and comes back by itself
+        (see RateLimitGuard). Any other error is a one-off, and pausing over it would take the robot out
+        of service for a problem that may not happen again.
+        """
+        utils.print_exception(exception=exception,
+                              message='Error during reasoning. The request was dropped')
+        if not rate_limit_guard.is_rate_limit(exception):
+            self._play_notice('reasoning_error')
+            return
+
+        notice_key = self.reasoning_guard.register_failure(exception=exception)
+        print(f'Reasoning rate limit reached (429). Requests will be refused for the next '
+              f'{self.reasoning_guard.remaining_cooldown():.0f} s.')
+        self._play_notice(notice_key)
 
     def _execute_function_call(self, function_call) -> list:
         """
@@ -227,9 +283,9 @@ class GoogleAIStudioService:
         Whether an answer should be sent to the TTS model right now.
 
         False either because TTS is switched off (in the config, or because its thread failed to start),
-        or because the API returned 429 and we are still inside the cooldown that followed.
+        or because the API returned 429 and the cooldown that followed is still running.
         """
-        return self.use_tts_service and time.time() >= self._tts_blocked_until
+        return self.use_tts_service and self.tts_guard.available()
 
     def run_tts_service(self) -> None:
         """
@@ -238,16 +294,17 @@ class GoogleAIStudioService:
 
         A 429 does not disable TTS for the rest of the run: on the free tier it is usually the per-minute
         rate limit, which clears by itself, so the service only goes quiet for a cooldown (see
-        _enter_tts_cooldown) and resumes afterwards. Requests popped while a cooldown is running are
-        dropped rather than held: the reasoning loop has long moved on, and speaking an answer minutes
-        after the question is worse than staying silent. Their text is still printed.
+        RateLimitGuard) and resumes afterwards. Requests popped while a cooldown is running are dropped
+        rather than held: the reasoning loop has long moved on, and speaking an answer minutes after the
+        question is worse than staying silent. Their text is still printed.
         """
         while True:
             request = self.shared_variable_manager.pop_from(queue_name='tts_requests')
             if request is not None:
                 if not self._tts_available():
                     # Enqueued before the cooldown started. The reasoning thread stops adding requests as
-                    # soon as it sees the block, but whatever was already queued still arrives here.
+                    # soon as it sees the block (and is the one that announces it, since it knows a user
+                    # is waiting), but whatever was already queued still arrives here.
                     if self.verbose >= 1:
                         print(request)
                     time.sleep(0.02)
@@ -264,81 +321,24 @@ class GoogleAIStudioService:
                     audio_response = None
                     # A rate limit or an exhausted quota is temporary, so pause TTS for a while instead
                     # of calling the API again for every following request only to fail the same way.
-                    if getattr(e, 'code', None) == 429:
-                        self._enter_tts_cooldown(exception=e)
+                    if rate_limit_guard.is_rate_limit(e):
+                        notice_key = self.tts_guard.register_failure(exception=e)
+                        print(f'TTS rate limit reached (429). Responses will be printed in the console '
+                              f'for the next {self.tts_guard.remaining_cooldown():.0f} s.')
+                        self._play_notice(notice_key)
                     if self.verbose >= 1:
                         print(request)
                 else:
-                    # The quota is flowing again, so forget how bad it was before.
-                    self._tts_failure_count = 0
+                    # The quota is flowing again, so forget how bad it was before. Queued before the
+                    # answer itself, so "available again" is not heard after the proof of it.
+                    self._play_notice(self.tts_guard.register_success())
                 if audio_response is not None:
                     self.shared_variable_manager.add_to(queue_name='audio_to_play', value=audio_response)
             else:
+                # See run_reasoning_service: the idle pass is where a cooldown running out is noticed.
+                self._play_notice(self.tts_guard.poll_recovery())
                 time.sleep(0.2)
             time.sleep(0.02)
-
-    def _enter_tts_cooldown(self, exception) -> None:
-        """
-        Put the TTS service to sleep after a 429, and say so out loud once.
-
-        The base wait is the retryDelay the server asked for, or the configured default when the error
-        carries none. It is then doubled once per consecutive failure and capped at max_cooldown, so a
-        limit that keeps being hit backs off instead of retrying at a fixed rate forever. A 429 that
-        names a per-day quota waits the maximum straight away, since it will not clear before then.
-        The failure count is reset by the first successful call (see run_tts_service).
-        """
-        self._tts_failure_count += 1
-        if _is_per_day_quota(exception):
-            cooldown = self.tts_max_cooldown
-        else:
-            base_cooldown = _parse_retry_delay(exception) or self.tts_default_cooldown
-            cooldown = base_cooldown * (self.tts_backoff_factor ** (self._tts_failure_count - 1))
-        cooldown = min(cooldown, self.tts_max_cooldown)
-        self._tts_blocked_until = time.time() + cooldown
-
-        print(f'TTS rate limit reached (429). Responses will be printed in the console for the next '
-              f'{cooldown:.0f} s.')
-        self._play_rate_limit_notice()
-
-    def _play_rate_limit_notice(self) -> None:
-        """
-        Queue the pre-recorded "request limit reached" clip for playback on the RDK X3 speakers.
-
-        Only the PCM frames are sent, not the raw file bytes: the RDK X3 writes whatever arrives straight
-        to ALSA without parsing it (audio_bridge_server._serve_speaker_playback), so a WAV header would be
-        played as a burst of noise. For the same reason the clip has to already be in the format the
-        playback side is configured for; a mismatched file is reported instead of being played at the
-        wrong pitch, and the console message above still tells the story.
-
-        Announcing on every 429 would make the robot repeat itself once per cooldown, so the notice has
-        its own minimum interval.
-        """
-        if not self.tts_notice_audio_file_name:
-            return
-        now = time.time()
-        if now - self._last_tts_notice < self.tts_min_notice_interval:
-            return
-
-        file_path = gc.ASSETS_FOLDER_PATH + self.tts_notice_audio_file_name
-        try:
-            with wave.open(file_path, mode='rb') as notice_file:
-                channels = notice_file.getnchannels()
-                sample_width = notice_file.getsampwidth()
-                frame_rate = notice_file.getframerate()
-                pcm_bytes = notice_file.readframes(notice_file.getnframes())
-        except Exception as file_error:
-            utils.print_exception(exception=file_error,
-                                  message=f'Could not read the TTS rate limit notice "{file_path}"')
-            return
-
-        if (channels, sample_width, frame_rate) != (1, 2, endpoints.SPEAKER_SAMPLE_RATE):
-            warnings.warn(f'"{file_path}" is {frame_rate} Hz, {channels} channel(s), {sample_width * 8} bit, '
-                          f'but the speakers expect {endpoints.SPEAKER_SAMPLE_RATE} Hz mono 16 bit. '
-                          f'Not playing it.')
-            return
-
-        self._last_tts_notice = now
-        self.shared_variable_manager.add_to(queue_name='audio_to_play', value=pcm_bytes)
 
     def start_services(self) -> None:
         """
