@@ -1,0 +1,261 @@
+# Config for scripts/capture_mat_photos.py, the arm-camera capture session for the MTG cube draft
+# project (task 0.7 of ../mtg_cube_draft/docs/PLAN.md: ~20 labelled photos of real packs on the
+# printed ArUco mat, varying pack size, lighting and headlight).
+#
+# Run it on the Jetson from the IDE or the terminal with no arguments: everything is read from here.
+# The script has no command line interface on purpose, so there is nothing to remember while
+# standing at the table with a pack of cards in one hand.
+
+# verbosity levels:
+#   ERROR = 0
+#   WARNING = 1
+#   INFO = 2
+#   DEBUG = 3
+verbose: 2
+
+# --- camera ------------------------------------------------------------------------------------
+# The USB arm camera, the same device configs/usb_camera.yaml opens. main_thread.py must NOT be
+# running while capturing: /dev/video can only be opened once, and the second opener gets either an
+# error or black frames.
+video_id: 0
+
+# Which OpenCV backend opens the device. null lets OpenCV choose, which is what the rest of the repo
+# does and is normally right. Set it to CAP_V4L2 if the camera ignores every setting below: on a
+# vendor OpenCV build the device can end up on the GStreamer backend, where each set() reports
+# success and changes nothing. The backend actually in use is printed at startup either way.
+capture_backend: null
+
+# The arm camera is a 0.3 MP module (110 degrees), and 0.3 MP is 640x480, so this is the sensor's
+# real ceiling rather than a choice. Anything larger a UVC camera offers at that sensor size is
+# interpolated, which adds pixels and no detail, so the probe below is worth running once to see what
+# it claims. For reference, 640 px across the 420 mm mat is 1.5 px/mm at the absolute best, against
+# the ~4.6 px/mm the recognition design assumed from a 1080p camera. The real figure, measured from
+# the mat markers in every shot, is what settles it.
+width: 640
+height: 480
+# MJPG is what lets most UVC cameras reach their full resolution at a usable frame rate; the raw
+# YUYV mode is usually capped at a few frames per second. null leaves the default alone.
+fourcc: MJPG
+frame_rate: 30
+
+# Probe a list of modes at startup and report which ones the camera really supports. Worth running
+# once to learn what this camera can do, then set to false: it costs a few seconds, and some
+# cameras dislike being reconfigured repeatedly.
+probe_camera_modes: true
+probe_resolutions:
+  - [640, 480]
+  - [800, 600]
+  - [1280, 720]
+  - [1600, 1200]
+  - [1920, 1080]
+  - [2592, 1944]
+  - [3840, 2160]
+
+# Seconds of continuous reading after opening the camera, before the first shot. Auto exposure and
+# auto white balance need it: the first frames out of a UVC camera are dark or green.
+settle_seconds: 2.0
+# Frames thrown away immediately before each capture. The driver keeps a few frames queued, so
+# without this a shot taken after a pause is a picture of the table as it was a second ago.
+flush_frames: 5
+
+# Camera controls. null leaves the camera's own setting untouched, which is the right default:
+# these are driver specific, and a wrong value is worse than no value. Set them only after seeing
+# what the preview looks like.
+#   auto_exposure: V4L2 convention, 3 = auto, 1 = manual. Set exposure only with this at 1.
+#   autofocus: 1 = on, 0 = off. Fixing the focus stops the camera hunting while the arm sits still.
+autofocus: null
+focus: null
+auto_exposure: null
+exposure: null
+brightness: null
+contrast: null
+saturation: null
+gain: null
+
+# --- output ------------------------------------------------------------------------------------
+# Resolved against the project root, never the working directory. data/ is gitignored, so copy the
+# session folder to the PC when you are done (the script prints the scp command).
+output_folder: data/mat_photos
+# null names the session mat_photos_<date>_<time>. Naming an existing session adds shots to it.
+session_name: null
+
+# PNG, because these photos are the reference set every recognition threshold gets tuned against,
+# and JPEG artefacts would be baked into the thing being measured. Use .jpg only if the Jetson runs
+# short of disk space.
+image_format: .png
+jpeg_quality: 95
+
+# --- checks on each shot -------------------------------------------------------------------------
+# Locate the mat's ArUco markers right after the shutter, so a mat with a corner out of frame is
+# found now rather than after twenty photos. Needs cv2.aruco, which only ships with the contrib
+# build: if this OpenCV lacks it, the script says so once and carries on without the check.
+check_markers: true
+# Must match configs/mat_geometry.toml in the mtg_cube_draft repo, which is what the mat was
+# printed from. The ids are listed in the order they go round the mat, clockwise from the top left,
+# which is what lets the four centres be joined into the mat quadrilateral rather than a bowtie.
+aruco_dictionary: DICT_4X4_50
+expected_marker_ids: [0, 1, 2, 3]
+
+# Millimetres between the centres of the two top markers, and equally the two bottom ones. From
+# mat_geometry.toml: the top-left marker spans 12 to 30 mm (centre 21) and the top-right one 390 to
+# 408 mm (centre 399), so 378 mm apart. This is the ruler in the picture: a known real distance and
+# its measured pixel length give the px/mm actually landing on the mat, which is the number that says
+# whether a card can be recognised at all. Change it only if the mat is reprinted at another size.
+marker_centre_spacing_mm: 378.0
+
+# Warning thresholds. They never block a shot, they only print a line so you can decide to retake.
+# Brightness and glare are measured inside the four markers when the mat is found, and over the whole
+# frame when it is not, so the two cases are not comparable: session.json records which one it was.
+#   min_sharpness: variance of the Laplacian over the mat. Below it the frame is probably out of focus
+#     or smeared by arm movement. The absolute value depends on the camera and the lens, so calibrate
+#     it on the first few shots rather than trusting this default.
+#   max_clipped_fraction: share of pixels at or near pure white, i.e. blown-out sleeve glare. The
+#     mat's own four white marker patches lie inside the measured area and account for a percent or
+#     two on their own, so this is a change-detector, not an absolute.
+#   min_mean_brightness: the mat field is printed deliberately dark (about 32/255), so even a
+#     well-lit mat averages low. This only catches a genuinely underexposed frame.
+#   min_mat_coverage: share of the frame inside the four markers. A mat filling a quarter of the
+#     frame throws away most of the resolution the cards need.
+#   min_pixels_per_millimetre: measured on the far side of the mat, so it is the resolution the
+#     worst-placed card gets. At 1.0 a card art box is ~52 px wide, which is about the point where
+#     the 16x16 hash stops being fed real detail and starts being fed an upscale. This is the number
+#     that decides whether the arm camera can do this job at all, so it is a warning and not a
+#     failure: the session should record the truth rather than refuse to.
+min_sharpness: 60.0
+max_clipped_fraction: 0.05
+min_mean_brightness: 30.0
+min_mat_coverage: 0.25
+min_pixels_per_millimetre: 1.0
+
+# Show each shot with its measurements and wait for keep or retake. Turn it off for a fast session
+# where the folder gets reviewed afterwards instead.
+confirm_each_shot: true
+
+# --- preview window ------------------------------------------------------------------------------
+# auto = use a window if this session has a display (remote desktop, X forwarding), and otherwise
+# fall back to typing at the prompt. true forces the window, false forces the prompt.
+show_preview: auto
+preview_max_width: 960
+# Detect the markers live in the preview every N frames, so the arm can be aimed before shooting.
+# It runs on the downscaled preview image to stay responsive, so it is guidance only; the number
+# recorded with a photo is always measured on the full-resolution frame.
+preview_marker_check_every: 5
+
+# --- the shot plan -------------------------------------------------------------------------------
+# What to photograph, in order. Shots sharing a 'layout' number use the SAME cards, physically
+# untouched, so each layout's card list is typed once (into layout_NN.cards.txt) instead of once per
+# photo. Keep a layout's shots together and change only the light between them.
+#
+# 'headlight_on' is instruction text, not a command: the headlight is driven from the RDK X3, so
+# switch it there. It is recorded with the photo either way, which is what answers the "headlight on
+# or off for the wide shot" question in DESIGN.md.
+#
+# During the session: [s] skips a shot, [q] ends it early. Both are fine, a partial set is still
+# useful. Add a layout of foils or old card frames if the cube has any: they are the likeliest to
+# fail, and knowing that now is the point of the exercise.
+start_at_shot: 1
+shot_plan:
+  # Layout 1: a full pack, the normal case, through every lighting condition.
+  - layout: 1
+    pack_size: 15
+    headlight_on: false
+    lighting: room ceiling light
+    note: the reference shot, cards flat in their slots
+  - layout: 1
+    pack_size: 15
+    headlight_on: true
+    lighting: room ceiling light
+    note: same cards, headlight on
+  - layout: 1
+    pack_size: 15
+    headlight_on: false
+    lighting: dim, evening or curtains closed
+    note: same cards, low light
+  - layout: 1
+    pack_size: 15
+    headlight_on: true
+    lighting: dim, evening or curtains closed
+    note: same cards, low light, headlight on
+  # Layout 2: a full pack again, but sloppy, which is how a pack really lands on the table.
+  - layout: 2
+    pack_size: 15
+    headlight_on: false
+    lighting: room ceiling light
+    note: cards rotated a few degrees and off their slots, one near the mat edge
+  - layout: 2
+    pack_size: 15
+    headlight_on: false
+    lighting: desk lamp low and to one side
+    note: worst case glare, aim the lamp across the sleeves
+  - layout: 2
+    pack_size: 15
+    headlight_on: true
+    lighting: desk lamp low and to one side
+    note: glare plus headlight, the pessimistic case
+  # Layouts 3 to 7: the pack shrinking, pick by pick.
+  - layout: 3
+    pack_size: 12
+    headlight_on: false
+    lighting: room ceiling light
+    note: 12 cards
+  - layout: 3
+    pack_size: 12
+    headlight_on: true
+    lighting: room ceiling light
+    note: 12 cards, headlight on
+  - layout: 4
+    pack_size: 10
+    headlight_on: false
+    lighting: room ceiling light
+    note: 10 cards
+  - layout: 4
+    pack_size: 10
+    headlight_on: true
+    lighting: dim, evening or curtains closed
+    note: 10 cards, low light, headlight on
+  - layout: 5
+    pack_size: 8
+    headlight_on: false
+    lighting: room ceiling light
+    note: 8 cards
+  - layout: 5
+    pack_size: 8
+    headlight_on: false
+    lighting: desk lamp low and to one side
+    note: 8 cards, glare
+  - layout: 6
+    pack_size: 6
+    headlight_on: false
+    lighting: room ceiling light
+    note: 6 cards, spread out rather than packed together
+  - layout: 6
+    pack_size: 6
+    headlight_on: true
+    lighting: room ceiling light
+    note: 6 cards, headlight on
+  - layout: 7
+    pack_size: 4
+    headlight_on: false
+    lighting: room ceiling light
+    note: 4 cards
+  - layout: 7
+    pack_size: 4
+    headlight_on: true
+    lighting: dim, evening or curtains closed
+    note: 4 cards, low light, headlight on
+  # Layouts 8 to 10: the end of a pack, where there is almost nothing on the mat.
+  - layout: 8
+    pack_size: 3
+    headlight_on: false
+    lighting: room ceiling light
+    note: 3 cards
+  - layout: 9
+    pack_size: 2
+    headlight_on: false
+    lighting: room ceiling light
+    note: 2 cards, far apart on the mat
+  - layout: 10
+    pack_size: 1
+    headlight_on: false
+    lighting: room ceiling light
+    note: the last pick, one card

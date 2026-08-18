@@ -174,3 +174,65 @@ class TestAudioNotices:
         with wave.open(str(ASSETS_FOLDER / self.NOTICES[notice_key])) as clip:
             duration = clip.getnframes() / clip.getframerate()
         assert duration <= 12
+
+
+class TestCaptureShotPlan:
+    """
+    The shot plan of scripts/capture_mat_photos.py, which is a config describing a session with real
+    cards on a table rather than a set of numbers.
+
+    It is checked here instead of by importing the script, because the script needs OpenCV and the
+    development machine does not have it. What is worth checking is the part a person edits: a plan
+    that comes back to a layout after moving on from it, or that gives one layout two different pack
+    sizes, is asking for cards to be laid out again exactly as they were, which nobody can do. The
+    cost of finding that out during the session is the session.
+    """
+
+    SHOT_FIELDS = {'layout', 'pack_size', 'headlight_on', 'lighting', 'note'}
+
+    @pytest.fixture
+    def config(self):
+        return load_config('capture_mat_photos.yaml')
+
+    @pytest.fixture
+    def shot_plan(self, config):
+        return config['shot_plan']
+
+    def test_every_shot_describes_itself_completely(self, shot_plan):
+        for shot in shot_plan:
+            assert set(shot) == self.SHOT_FIELDS, shot
+            assert isinstance(shot['pack_size'], int) and shot['pack_size'] >= 1
+            assert isinstance(shot['headlight_on'], bool), 'YAML reads a bare "off" as False anyway'
+            assert shot['lighting'] and shot['note']
+
+    def test_the_shots_of_a_layout_are_consecutive(self, shot_plan):
+        # Shots sharing a layout are the same cards left untouched, so coming back to a layout later
+        # would mean rebuilding it card for card from the photos already taken.
+        seen_layouts = []
+        for shot in shot_plan:
+            if not seen_layouts or seen_layouts[-1] != shot['layout']:
+                assert shot['layout'] not in seen_layouts, f'layout {shot["layout"]} is split up'
+                seen_layouts.append(shot['layout'])
+
+    def test_a_layout_holds_one_number_of_cards(self, shot_plan):
+        # One layout means one card list file, so two pack sizes under the same number would label
+        # some of the photos wrongly.
+        for layout in {shot['layout'] for shot in shot_plan}:
+            sizes = {shot['pack_size'] for shot in shot_plan if shot['layout'] == layout}
+            assert len(sizes) == 1, f'layout {layout} claims {sizes} cards in different shots'
+
+    def test_the_plan_varies_what_it_is_supposed_to_vary(self, shot_plan):
+        # The point of the exercise is a spread of conditions, not twenty photographs of one.
+        assert len({shot['pack_size'] for shot in shot_plan}) >= 4
+        assert len({shot['lighting'] for shot in shot_plan}) >= 2
+        assert {shot['headlight_on'] for shot in shot_plan} == {True, False}
+
+    def test_the_session_starts_inside_the_plan(self, config):
+        assert 1 <= config['start_at_shot'] <= len(config['shot_plan'])
+
+    def test_the_image_format_is_an_extension_opencv_understands(self, config):
+        assert config['image_format'].startswith('.')
+
+    def test_the_mat_has_four_distinct_corner_markers(self, config):
+        marker_ids = config['expected_marker_ids']
+        assert len(marker_ids) == len(set(marker_ids)) == 4
