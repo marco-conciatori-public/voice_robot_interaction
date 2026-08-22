@@ -21,8 +21,9 @@ after the cards are back in the box:
     and that is worth knowing while the pack is still on the table.
   - It **groups shots by layout**. Shots that share a `layout` number are the same cards, physically
     untouched, photographed under different light, so the card list is typed once per layout rather
-    than once per photo. That list goes in `layout_NN.cards.txt`, one card name per line, which the
-    test harness (task 0.9) reads next to `session.json`.
+    than once per photo. That list goes in `layout_NN.cards.txt`, one card name per line in the cube
+    list's English spelling, with anything after a `#` kept as a note about that card. The test
+    harness (task 0.9) reads it next to `session.json`.
   - It **records what the camera actually did**: the resolution really negotiated, the codec, the
     backend, and optionally every mode the camera claims. This is the open question of the whole
     exercise rather than a detail. The arm camera is a 0.3 MP 110-degree module, so 640x480 is the
@@ -594,6 +595,19 @@ def cards_file_name(layout: int) -> str:
     return 'layout_{:02d}.cards.txt'.format(int(layout))
 
 
+def card_name_from_line(line: str) -> str:
+    """
+    The card name in one line of a layout file, or '' when the line holds no name.
+
+    Everything from the first '#' onwards is a note for whoever reads the labels later, not part of
+    the name: no Magic card name contains '#', and a note belongs on the same line as the card it
+    describes ("Preordain  # Italian M11 printing"). The name has to come out clean because the test
+    harness looks it up in the cube list, where a name it cannot find is indistinguishable from a
+    card the recognition got wrong.
+    """
+    return line.split('#', 1)[0].strip()
+
+
 def write_cards_file(session_folder: Path, session_name: str, layout: int, pack_size, photo_names: List[str]) -> Path:
     """
     Create or refresh the card list for one layout, keeping anything already typed into it.
@@ -604,20 +618,30 @@ def write_cards_file(session_folder: Path, session_name: str, layout: int, pack_
     sits next to it. The header is rewritten as photos are added; only the comment lines are touched.
     """
     path = session_folder / cards_file_name(layout=layout)
-    existing_names = []
+    # The whole line is kept, note and all, rather than just the name the parser pulls out of it:
+    # this file is rewritten after every shot of the layout, so anything dropped here is lost the
+    # next time the shutter fires, which is exactly when nobody is looking at the file.
+    existing_lines = []
     if path.is_file():
         with open(str(path)) as cards_file:
             for line in cards_file:
-                stripped = line.strip()
-                if stripped and not stripped.startswith('#'):
-                    existing_names.append(stripped)
+                if card_name_from_line(line):
+                    existing_lines.append(line.rstrip())
 
     header = [
         '# Card names for layout {} of session {}.'.format(layout, session_name),
         '#',
-        '# One card name per line, exactly as printed on the card, in any order. Blank lines and',
-        '# lines starting with "#" are ignored. Split and double-faced cards keep the full name',
-        '# the cube list uses, for example "Fire // Ice".',
+        '# One name per line, in any order, spelled the way the cube list spells it, which is the',
+        '# ENGLISH name even when the card in front of you is not: that is what the hash database is',
+        '# keyed on. Split and double-faced cards keep the full name, for example "Fire // Ice".',
+        '#',
+        '# Anything after a "#" is a note. It stays with the card and is not part of the name. Write',
+        '# one whenever the card is not the ordinary case, because the test harness prints it beside',
+        '# the result, and a miss then explains itself:',
+        '#     Preordain  # Italian M11 printing, "Predestinare"',
+        '#     Sol Ring   # Commander 2019, the database only has the Alpha frame of this art',
+        '#',
+        '# Blank lines and lines that start with "#" are ignored.',
         '#',
         '# Expected number of cards: {}'.format(pack_size if pack_size is not None else 'unspecified'),
         '# Photos of this layout: {}'.format(', '.join(photo_names) if photo_names else 'none yet'),
@@ -625,8 +649,8 @@ def write_cards_file(session_folder: Path, session_name: str, layout: int, pack_
     ]
     with open(str(path), 'w') as cards_file:
         cards_file.write('\n'.join(header))
-        for name in existing_names:
-            cards_file.write(name + '\n')
+        for line in existing_lines:
+            cards_file.write(line + '\n')
     return path
 
 
@@ -635,8 +659,7 @@ def count_named_cards(path: Path) -> int:
     if not path.is_file():
         return 0
     with open(str(path)) as cards_file:
-        return sum(1 for line in cards_file
-                   if line.strip() and not line.strip().startswith('#'))
+        return sum(1 for line in cards_file if card_name_from_line(line))
 
 
 def save_photo(frame, path: Path, parameters: dict) -> None:
