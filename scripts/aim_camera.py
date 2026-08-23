@@ -33,8 +33,7 @@ import json
 import time
 import socket
 import threading
-from http.server import BaseHTTPRequestHandler, HTTPServer
-from socketserver import ThreadingMixIn
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
@@ -60,19 +59,6 @@ WINDOW_NAME = 'aim camera'
 # into the mat quadrilateral rather than a bowtie.
 CORNER_NAMES = ('top left', 'top right', 'bottom right', 'bottom left')
 OUTPUT_CHOICES = ('auto', 'window', 'http', 'text')
-
-
-class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
-    """
-    One thread per connection, so a browser sitting on the MJPEG stream cannot block the status
-    requests arriving beside it.
-
-    http.server has had exactly this class since Python 3.7, and importing it from there is how this
-    started. The Jetson's interpreter is older than that, and a script that only runs on a board with
-    a newer Python is no use here, so the two lines it saves are written out instead.
-    """
-
-    daemon_threads = True
 
 
 def aim_camera(**kwargs) -> Optional[dict]:
@@ -624,7 +610,9 @@ def make_http_server(host: str, port: int, latest_frame: LatestFrame) -> Threadi
             except (BrokenPipeError, ConnectionResetError):
                 pass  # the tab was closed or reloaded, which is not worth a traceback
 
-    return ThreadingHTTPServer((host, port), Handler)
+    server = ThreadingHTTPServer((host, port), Handler)
+    server.daemon_threads = True
+    return server
 
 
 def start_http_server(parameters: dict, latest_frame: LatestFrame) -> ThreadingHTTPServer:
