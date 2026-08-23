@@ -14,10 +14,14 @@
 verbose: 2
 
 # --- camera ------------------------------------------------------------------------------------
-# The USB arm camera, the same device configs/usb_camera.yaml opens. main_thread.py must NOT be
-# running while capturing: /dev/video can only be opened once, and the second opener gets either an
-# error or black frames.
-video_id: 0
+# The USB arm camera (Microdia 0c45:6340). main_thread.py must NOT be running while capturing:
+# /dev/video can only be opened once, and the second opener gets either an error or black frames.
+#
+# It sits on /dev/video1 on this board, not video0, which is why this is 1 while configs/usb_camera.yaml
+# still says 0: that file drives the robot app and is left alone until the robot is seen to need it, but
+# if main_thread.py ever fails to open the camera, this is the reason. The index is assigned at enumeration
+# and can move, so "ls -l /dev/video*" is the first thing to check when the camera cannot be opened.
+video_id: 1
 
 # Which OpenCV backend opens the device. null lets OpenCV choose, which is what the rest of the repo
 # does and is normally right. Set it to CAP_V4L2 if the camera ignores every setting below: on a
