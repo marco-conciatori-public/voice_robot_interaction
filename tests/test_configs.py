@@ -236,3 +236,46 @@ class TestCaptureShotPlan:
     def test_the_mat_has_four_distinct_corner_markers(self, config):
         marker_ids = config['expected_marker_ids']
         assert len(marker_ids) == len(set(marker_ids)) == 4
+
+
+class TestAimCameraConfig:
+    """
+    The aiming targets of scripts/aim_camera.py, which have to stay stricter than the session's own.
+
+    The script says READY when nothing in aim_camera.yaml complains, and the capture session then
+    warns about the same frame from capture_mat_photos.yaml. Targets that slipped below the session's
+    thresholds would produce the one failure worth guarding against here: a green light that is
+    followed by twenty warnings, discovered with the cards already on the table.
+    """
+
+    OUTPUT_CHOICES = ('auto', 'window', 'http', 'text')
+
+    @pytest.fixture
+    def config(self):
+        return load_config('aim_camera.yaml')
+
+    @pytest.fixture
+    def capture_config(self, config):
+        return load_config(Path(config['capture_config']).name)
+
+    def test_it_points_at_a_capture_config_that_exists(self, config):
+        # Read at startup and resolved against the project root, so a rename shows up as a crash on
+        # the Jetson rather than here, where it is free to find.
+        assert (Path(gc.PROJECT_FOLDER_PATH) / config['capture_config']).is_file()
+
+    def test_the_output_is_one_the_script_knows(self, config):
+        assert config['output'] in self.OUTPUT_CHOICES
+
+    def test_the_coverage_target_is_above_what_the_session_merely_tolerates(self, config, capture_config):
+        assert config['target_mat_coverage'] >= capture_config['min_mat_coverage']
+
+    def test_the_coverage_window_is_a_window(self, config):
+        assert config['target_mat_coverage'] < config['max_mat_coverage'] <= 1.0
+
+    def test_the_mat_may_sit_somewhat_off_centre(self, config):
+        # Half the frame off centre would mean the mat is barely in the picture at all.
+        assert 0.0 < config['centre_tolerance'] < 0.5
+
+    def test_a_shallow_view_is_still_a_view(self, config):
+        # 1.0 is straight down, so a threshold at or below it would ask for the impossible.
+        assert config['max_scale_ratio'] > 1.0

@@ -1,0 +1,89 @@
+# Config for scripts/aim_camera.py, the live view used to point the robot at the mat before a capture
+# session (step one of task 0.7 in ../mtg_cube_draft/docs/PLAN.md). It takes no photographs and writes
+# nothing: it only says, continuously, whether the camera sees the whole mat well enough.
+#
+# Run it on the Jetson from the IDE or the terminal with no arguments. main_thread.py must NOT be
+# running, and neither must capture_mat_photos.py: /dev/video opens once.
+
+# verbosity levels:
+#   ERROR = 0
+#   WARNING = 1
+#   INFO = 2
+#   DEBUG = 3
+verbose: 2
+
+# --- where the camera settings come from ---------------------------------------------------------
+# The resolution, codec, camera controls, marker dictionary and warning thresholds are all read from
+# the capture session's own config rather than restated here. Two copies would drift, and the drift
+# would be invisible: a preview at a different resolution measures a different number of pixels per
+# millimetre, which is exactly the number being aimed for. Change the camera in ONE place, there.
+# Relative paths hang off the project root, never the working directory.
+capture_config: configs/capture_mat_photos.yaml
+
+# Probing every resolution the camera might have takes seconds and answers a question about the
+# camera, not about the aim, so it is off here even when the capture config turns it on.
+probe_camera_modes: false
+
+# --- how to watch it -----------------------------------------------------------------------------
+# auto   -> a preview window if this session has a display (remote desktop, ssh -X), otherwise the
+#           browser stream, which is the case a plain ssh session hits.
+# window -> force the OpenCV window, and fail loudly if there is no display.
+# http   -> force the browser stream even when a window would work. Handy when the robot is in
+#           another room from the screen you are looking at.
+# text   -> no picture at all, one line of numbers per second at the prompt. Needs nothing, but
+#           aiming a camera by reading numbers is slow.
+output: auto
+
+# The MJPEG stream. 0.0.0.0 accepts connections from the network, which is the entire point: the
+# browser doing the watching is on the PC. Set 127.0.0.1 to keep the stream on the Jetson itself.
+# The script prints the address to open. Nothing is served unless output ends up as 'http'.
+http_host: '0.0.0.0'
+http_port: 8080
+# Quality of the streamed frames. This is the picture you aim by, not the picture the session
+# records, so it can be lossy: 80 keeps the markers readable on a normal wifi link.
+jpeg_quality: 80
+
+# Width the live view is scaled to before it is drawn on, in both the window and the stream. The
+# measurements are always taken on the full-resolution frame; this only decides how big the picture
+# on screen is.
+preview_max_width: 960
+
+# Measure every Nth frame. Marker detection is the only expensive thing in the loop and a hand moving
+# a robot does not need thirty updates a second. 1 measures every frame, at a cost in frame rate.
+measure_every_frames: 3
+
+# Seconds between printed lines in 'text' output. Ignored by the other two.
+text_interval_seconds: 1.0
+
+# Print a line to the terminal whenever the verdict or the first piece of advice changes, so the ssh
+# session that started the script keeps a short log of the aiming while you watch the browser.
+report_changes: true
+
+# Draw the marker outlines, the mat quadrilateral, the mat centre and the frame centre over the live
+# view. The two centre marks are the fastest way to see which way to move: the aim is good when they
+# sit on top of each other.
+draw_markers: true
+
+# --- when the aim is good enough -----------------------------------------------------------------
+# These four decide what the view calls READY. They are aiming targets, deliberately stricter than
+# the capture session's warning thresholds: those say whether a photograph is usable at all, these
+# say whether the setup is worth photographing twenty times. The session's own thresholds
+# (min_sharpness, min_pixels_per_millimetre and the rest) are read from capture_mat_photos.yaml and
+# still show up here as warnings underneath the advice.
+
+# Share of the frame the mat has to fill, measured inside the four markers. The session accepts 0.25;
+# aim well above it, because everything the mat does not cover is table, and the card art box is only
+# about 52 mm wide to begin with.
+target_mat_coverage: 0.45
+# Above this the mat has no margin left in the frame and a card near the edge risks being cut off.
+max_mat_coverage: 0.85
+# How far the centre of the mat may sit from the centre of the frame, as a share of the frame, before
+# the view starts saying which way to aim. 0.08 is about a centimetre on a typical preview.
+centre_tolerance: 0.08
+# Ratio between the pixels per millimetre on the near edge of the mat and on the far edge. It is a
+# measure of how obliquely the camera is looking: 1.0 would be straight down, and the further above
+# it, the more the mat is being seen edge-on. The design asks for a view angle of 45 degrees or
+# steeper, which lands somewhere around 1.3 to 1.5 at a normal working distance, so 1.8 flags a
+# genuinely shallow view rather than a slightly tilted one. Worth recalibrating once the robot is
+# actually parked: it is a guide, not a measurement of the angle.
+max_scale_ratio: 1.8
