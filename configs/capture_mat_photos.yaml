@@ -17,11 +17,12 @@ verbose: 2
 # The USB arm camera (Microdia 0c45:6340). main_thread.py must NOT be running while capturing:
 # /dev/video can only be opened once, and the second opener gets either an error or black frames.
 #
-# It sits on /dev/video1 on this board, not video0, which is why this is 1 while configs/usb_camera.yaml
-# still says 0: that file drives the robot app and is left alone until the robot is seen to need it, but
-# if main_thread.py ever fails to open the camera, this is the reason. The index is assigned at enumeration
-# and can move, so "ls -l /dev/video*" is the first thing to check when the camera cannot be opened.
-video_id: 1
+# It sat on /dev/video1 until the camera was moved to another USB port on 2026-09-07, after which it
+# enumerated as /dev/video0 and agrees with configs/usb_camera.yaml again. The moving is the lesson,
+# not the number: the index is assigned at enumeration and follows the port, so "ls -l /dev/video*" is
+# the first thing to check when the camera cannot be opened, and this value is the second. An empty
+# /dev/video* is a different fault entirely, below the driver: check "lsusb" and the power.
+video_id: 0
 
 # Which OpenCV backend opens the device. null lets OpenCV choose, which is what the rest of the repo
 # does and is normally right. Set it to CAP_V4L2 if the camera ignores every setting below: on a
@@ -45,7 +46,13 @@ frame_rate: 30
 # Probe a list of modes at startup and report which ones the camera really supports. Worth running
 # once to learn what this camera can do, then set to false: it costs a few seconds, and some
 # cameras dislike being reconfigured repeatedly.
-probe_camera_modes: true
+#
+# Already answered, on 2026-09-07: this camera has ONE mode, 640x480, and refuses every larger size
+# in the list below rather than interpolating one, so there is nothing here to raise. It also
+# negotiates YUYV rather than the MJPG asked for above, which costs nothing at 640x480 at 30 fps
+# (that fits in USB 2.0 bandwidth uncompressed) and only means the module has no MJPG mode to
+# offer. Turn this back on if the arm ever gets a different camera.
+probe_camera_modes: false
 probe_resolutions:
   - [640, 480]
   - [800, 600]
