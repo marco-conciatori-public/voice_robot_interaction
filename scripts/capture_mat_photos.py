@@ -25,11 +25,11 @@ after the cards are back in the box:
     list's English spelling, with anything after a `#` kept as a note about that card. The test
     harness (task 0.9) reads it next to `session.json`.
   - It **records what the camera actually did**: the resolution really negotiated, the codec, the
-    backend, and optionally every mode the camera claims. This is the open question of the whole
-    exercise rather than a detail. The arm camera is a 0.3 MP 110-degree module, so 640x480 is the
-    sensor and not a setting, which is at best 1.5 px/mm over the 420 mm mat against the ~4.6 px/mm
-    the recognition design assumed from a 1080p camera. Whether that is survivable is decided by the
-    px/mm each shot reports, measured against the known 378 mm between the mat's marker centres.
+    backend, and optionally every mode the camera claims. That began as the open question of the whole
+    exercise: the robot's original arm camera was a 0.3 MP 110-degree module, at best 1.5 px/mm over
+    the 420 mm mat against the ~4.6 px/mm the recognition design assumed, and these reports are what
+    got it replaced. Whether any camera is good enough is decided by the px/mm each shot reports,
+    measured against the known 378 mm between the mat's marker centres.
 
 Run it with no arguments, from the IDE or the terminal; everything comes from
 `configs/capture_mat_photos.yaml`. There is deliberately no command line interface.

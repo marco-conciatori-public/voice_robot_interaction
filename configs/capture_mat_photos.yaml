@@ -14,11 +14,12 @@
 verbose: 2
 
 # --- camera ------------------------------------------------------------------------------------
-# The USB arm camera (Microdia 0c45:6340). main_thread.py must NOT be running while capturing:
-# /dev/video can only be opened once, and the second opener gets either an error or black frames.
+# The USB arm camera, an InnoMaker U20-16MP-AF since 2026-09-19. main_thread.py must NOT be running
+# while capturing: /dev/video can only be opened once, and the second opener gets either an error or
+# black frames.
 #
-# It sat on /dev/video1 until the camera was moved to another USB port on 2026-09-07, after which it
-# enumerated as /dev/video0 and agrees with configs/usb_camera.yaml again. The moving is the lesson,
+# The camera before it sat on /dev/video1 until it was moved to another USB port on 2026-09-07, after
+# which it enumerated as /dev/video0, as the current one does too. The moving is the lesson,
 # not the number: the index is assigned at enumeration and follows the port, so "ls -l /dev/video*" is
 # the first thing to check when the camera cannot be opened, and this value is the second. An empty
 # /dev/video* is a different fault entirely, below the driver: check "lsusb" and the power.
@@ -30,14 +31,21 @@ video_id: 0
 # success and changes nothing. The backend actually in use is printed at startup either way.
 capture_backend: null
 
-# The arm camera is a 0.3 MP module (110 degrees), and 0.3 MP is 640x480, so this is the sensor's
-# real ceiling rather than a choice. Anything larger a UVC camera offers at that sensor size is
-# interpolated, which adds pixels and no detail, so the probe below is worth running once to see what
-# it claims. For reference, 640 px across the 420 mm mat is 1.5 px/mm at the absolute best, against
-# the ~4.6 px/mm the recognition design assumed from a 1080p camera. The real figure, measured from
-# the mat markers in every shot, is what settles it.
-width: 640
-height: 480
+# The arm camera is an InnoMaker U20-16MP-AF: a 1/2.8" IMX298, 65.8 degrees horizontal, phase detection
+# autofocus, every size in the probe list supported up to 4K, and MJPG honoured. It replaced, on
+# 2026-09-19, a 0.3 MP 110-degree module whose only mode was 640x480: that one put the far edge of the
+# mat at 0.8 to 1.2 px/mm, where the corner markers dropped in and out and card art was read as
+# phantom markers.
+#
+# 2592x1944, and not larger or 16:9, for three reasons. It is 4:3 like the sensor, so it keeps the whole
+# field of view, where 1920x1080 and 3840x2160 most likely crop the top and bottom off. Full 16 MP would
+# spend the Jetson's CPU decoding JPEG detail no 16x16 hash ever sees. And these photographs are the
+# reference set: the test harness can always downscale them to find out how little resolution is
+# enough, but it can never upscale one taken too small. The first aiming run, mat at 28% of the frame,
+# measured 3.20 to 4.18 px/mm on the mat: a card art box 166 to 217 px wide, against the ~155 px the
+# recognition design assumed from a 720p camera.
+width: 2592
+height: 1944
 # MJPG is what lets most UVC cameras reach their full resolution at a usable frame rate; the raw
 # YUYV mode is usually capped at a few frames per second. null leaves the default alone.
 fourcc: MJPG
@@ -47,11 +55,9 @@ frame_rate: 30
 # once to learn what this camera can do, then set to false: it costs a few seconds, and some
 # cameras dislike being reconfigured repeatedly.
 #
-# Already answered, on 2026-09-07: this camera has ONE mode, 640x480, and refuses every larger size
-# in the list below rather than interpolating one, so there is nothing here to raise. It also
-# negotiates YUYV rather than the MJPG asked for above, which costs nothing at 640x480 at 30 fps
-# (that fits in USB 2.0 bandwidth uncompressed) and only means the module has no MJPG mode to
-# offer. Turn this back on if the arm ever gets a different camera.
+# Answered for the current camera on 2026-09-19: every size in the list below is supported, and MJPG
+# is honoured. (The one before it had a single mode, 640x480, YUYV only.) Turn this back on if the arm
+# ever gets a different camera.
 probe_camera_modes: false
 probe_resolutions:
   - [640, 480]
@@ -118,8 +124,9 @@ marker_centre_spacing_mm: 378.0
 # Brightness and glare are measured inside the four markers when the mat is found, and over the whole
 # frame when it is not, so the two cases are not comparable: session.json records which one it was.
 #   min_sharpness: variance of the Laplacian over the mat. Below it the frame is probably out of focus
-#     or smeared by arm movement. The absolute value depends on the camera and the lens, so calibrate
-#     it on the first few shots rather than trusting this default.
+#     or smeared by arm movement. The absolute value depends on the camera, the lens and above all the
+#     resolution (the same mat, same camera, same parking read about 2700 at 640x480 and 340 at
+#     2592x1944), so calibrate it on the first few shots rather than trusting this default.
 #   max_clipped_fraction: share of pixels at or near pure white, i.e. blown-out sleeve glare. The
 #     mat's own four white marker patches lie inside the measured area and account for a percent or
 #     two on their own, so this is a change-detector, not an absolute.
@@ -128,15 +135,16 @@ marker_centre_spacing_mm: 378.0
 #   min_mat_coverage: share of the frame inside the four markers. A mat filling a quarter of the
 #     frame throws away most of the resolution the cards need.
 #   min_pixels_per_millimetre: measured on the far side of the mat, so it is the resolution the
-#     worst-placed card gets. At 1.0 a card art box is ~52 px wide, which is about the point where
-#     the 16x16 hash stops being fed real detail and starts being fed an upscale. This is the number
-#     that decides whether the arm camera can do this job at all, so it is a warning and not a
-#     failure: the session should record the truth rather than refuse to.
+#     worst-placed card gets. At 3.0 a card art box is ~155 px wide, the figure the recognition design
+#     was written around. The current parking measured 3.20, so it clears this with little to spare:
+#     if it starts warning, move the camera closer rather than lowering the number. It is a warning
+#     and not a failure, because the session should record the truth rather than refuse to. (It was
+#     1.0 for the 640x480 camera, which never got far above it.)
 min_sharpness: 60.0
 max_clipped_fraction: 0.05
 min_mean_brightness: 30.0
 min_mat_coverage: 0.25
-min_pixels_per_millimetre: 1.0
+min_pixels_per_millimetre: 3.0
 
 # Show each shot with its measurements and wait for keep or retake. Turn it off for a fast session
 # where the folder gets reviewed afterwards instead.
