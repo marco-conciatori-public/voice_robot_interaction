@@ -78,9 +78,19 @@ flush_frames: 5
 # Camera controls. null leaves the camera's own setting untouched, which is the right default:
 # these are driver specific, and a wrong value is worse than no value. Set them only after seeing
 # what the preview looks like.
-#   auto_exposure: V4L2 convention, 3 = auto, 1 = manual. Set exposure only with this at 1.
-#   autofocus: 1 = on, 0 = off. Fixing the focus stops the camera hunting while the arm sits still.
-autofocus: null
+#   auto_exposure: 1 = manual, and for auto whichever mode the camera lists: 3 (aperture priority) on
+#     most webcams, 0 (fully automatic) on the current one. Set exposure only with this at 1.
+#   autofocus: 1 = on, 0 = off, and only when off does focus move the lens (0 to 800 on this camera).
+#
+# Autofocus is set ON, explicitly, and deliberately not locked. A focus value tuned by hand is right for
+# one distance to the mat, and the robot is parked a little differently at every draft, by someone who
+# has no way to run a focus sweep. Autofocus finds the mat wherever it is, and precision is not what
+# recognition needs: the hash sees a card art box of ~200 px reduced to 16x16, and task 0.6 measured a
+# blur at 0 to 4 bits against a 46-bit worst-case separation between cards. What would hurt is a frame
+# caught while the lens is still moving, and that is for a sharpness check at capture time to catch,
+# not for a fixed focus. Explicit rather than null because this camera reports autofocus as off by
+# default yet came up with it on: the config states the decision instead of inheriting a power cycle's.
+autofocus: 1
 focus: null
 auto_exposure: null
 exposure: null
