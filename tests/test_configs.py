@@ -227,6 +227,12 @@ class TestCaptureShotPlan:
         assert len({shot['lighting'] for shot in shot_plan}) >= 2
         assert {shot['headlight_on'] for shot in shot_plan} == {True, False}
 
+    def test_every_layout_survives_dropping_the_headlight_shots(self, shot_plan):
+        # include_headlight_shots: false filters the plan instead of editing it, so a layout whose
+        # every shot wanted the headlight would quietly vanish from the session rather than fail.
+        assert ({shot['layout'] for shot in shot_plan if not shot['headlight_on']}
+                == {shot['layout'] for shot in shot_plan})
+
     def test_the_session_starts_inside_the_plan(self, config):
         assert 1 <= config['start_at_shot'] <= len(config['shot_plan'])
 

@@ -182,6 +182,13 @@ preview_marker_check_every: 5
 # During the session: [s] skips a shot, [q] ends it early. Both are fine, a partial set is still
 # useful. Add a layout of foils or old card frames if the cube has any: they are the likeliest to
 # fail, and knowing that now is the point of the exercise.
+# Whether to take the shots that ask for the headlight. It is switched by hand on the RDK X3, so the
+# seven shots that want it mean crossing the room mid-session; false leaves them out and the other
+# thirteen still cover every layout. The plan below is not edited either way, so the "headlight on or
+# off for the wide shot" question stays answerable later: set this true, point session_name at the
+# same folder, and the missing shots land beside the ones already taken. Shot numbers do not move
+# when this is false, because they are handed out over the whole plan before the filter runs.
+include_headlight_shots: false
 start_at_shot: 1
 shot_plan:
   # Layout 1: a full pack, the normal case, through every lighting condition.

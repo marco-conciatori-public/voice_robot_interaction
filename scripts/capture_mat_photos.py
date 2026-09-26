@@ -202,11 +202,23 @@ def expand_shot_plan(parameters: dict) -> List[dict]:
             'note': str(entry.get('note', '')),
         })
 
+    if not parameters['include_headlight_shots']:
+        # Filtered here, after the numbers have been handed out over the whole plan, so that a shot
+        # keeps the same number whether or not the headlight ones are in this session. Those numbers
+        # go into session.json, and a later run that does take the headlight shots has to agree with
+        # the photographs already on disk about which shot is which.
+        shot_plan = [shot for shot in shot_plan if not shot['headlight_on']]
+        if not shot_plan:
+            raise ValueError('"include_headlight_shots" is false and every shot in the plan asks for '
+                             'the headlight, so there is nothing left to photograph.')
+
     start_at_shot = int(parameters['start_at_shot'])
-    if not 1 <= start_at_shot <= len(shot_plan):
+    if not 1 <= start_at_shot <= len(configured):
         raise ValueError('"start_at_shot" is {}, but the plan has {} shots.'
-                         .format(start_at_shot, len(shot_plan)))
-    return shot_plan[start_at_shot - 1:]
+                         .format(start_at_shot, len(configured)))
+    # By shot number rather than by position in the list, so it still means the shot the config calls
+    # that number once the headlight shots have been taken out from between the others.
+    return [shot for shot in shot_plan if shot['index'] >= start_at_shot]
 
 
 # --- the camera --------------------------------------------------------------------------------
