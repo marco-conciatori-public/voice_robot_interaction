@@ -20,7 +20,7 @@ Three ways to watch it, because the Jetson is usually headless:
   - one line of numbers a second at the prompt, which needs nothing at all.
 
 'output: auto' takes the first of those that works. Run it with no arguments, from the IDE Run
-button or the terminal; everything is read from configs/aim_camera.yaml. Stop it with [q] in the
+button or the terminal; everything is read from configs/aim_camera.yaml. Stop it with [esc] in the
 window, or Ctrl+C anywhere.
 
 main_thread.py must not be running, for the same reason as during a capture session: a V4L2 device
@@ -206,7 +206,8 @@ def print_instructions(output: str, capture_parameters: dict) -> None:
     print('Nothing is written to disk. Move the robot until the view says READY, park it there, then '
           'run scripts/capture_mat_photos.py without touching the camera again.')
     if output == 'window':
-        print('[q] or [esc] closes the window and ends the preview.')
+        print('[esc] closes the window and ends the preview ([q] too, on GUI builds that report '
+              'letter keys, which this one does not).')
     elif output == 'text':
         print('Ctrl+C ends the preview.')
     print('')
@@ -288,8 +289,8 @@ def watch(video, detect_markers: Optional[Callable], output: str, parameters: di
 
             if output == 'window':
                 cv2.imshow(WINDOW_NAME, preview)
-                key = cv2.waitKey(20) & 0xFF
-                if key in (27, ord('q')) or window_was_closed():
+                raw_key = cv2.waitKey(20)
+                if capture.key_is(raw=raw_key, codes=capture.QUIT_KEYS, letter='q') or window_was_closed():
                     break
             else:
                 encoded, buffer = cv2.imencode('.jpg', preview,
@@ -471,7 +472,7 @@ def overlay_lines(verdict: str, measurements: dict, guidance: List[str], warning
     lines.extend(shorten(text=line, width=78) for line in guidance[:2])
     lines.extend('! ' + shorten(text=warning, width=76) for warning in warnings[:2])
     if output == 'window':
-        lines.append('[q] quit')
+        lines.append('[esc] quit')
     return lines
 
 

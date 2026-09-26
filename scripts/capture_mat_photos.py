@@ -95,6 +95,20 @@ OPTIONAL_CAMERA_CONTROLS = (
     ('gain', 'CAP_PROP_GAIN'),
 )
 
+# What the preview windows answer to. Every action is bound to a CONTROL key, because those are the
+# only codes the OpenCV GUI backends agree on: cv2.waitKey reports letters differently between the
+# GTK and the Qt build, and on the Jetson's build it does not report them at all (measured: space,
+# Enter and Esc arrive, 's', 'q' and 'r' never do). Space, Enter, Tab, Backspace and Esc arrive
+# everywhere. The letters stay as aliases for the builds that do deliver them, so the keys anyone
+# already has in their fingers keep working where they can.
+#
+# The second number in each pair is the Qt backend's own code for that key, which does not survive
+# being masked down to a byte the way the GTK keysyms do.
+CONFIRM_KEYS = (32, 13, 10, 0x01000004, 0x01000005)  # space, Enter
+SKIP_KEYS = (9, 0x01000001)                          # Tab
+RETAKE_KEYS = (8, 127, 0x01000003)                   # Backspace
+QUIT_KEYS = (27, 0x01000000)                         # Esc
+
 
 def capture_mat_photos(**kwargs) -> Path:
     """
@@ -751,6 +765,25 @@ def shot_headline(shot: dict, remaining: int, first_of_layout: bool) -> List[str
     return lines
 
 
+def key_is(raw: int, codes: Sequence[int], letter: str = '') -> bool:
+    """
+    Whether a cv2.waitKey return value is one of these keys, whichever GUI backend produced it.
+
+    The value cannot be compared directly, because what arrives depends on the build: the GTK
+    backend returns an X keysym with modifier bits above the low byte, the Qt backend returns its
+    own key codes, and a letter comes back upper-case there even when it was typed unshifted. So
+    every plausible reading of the value is tried rather than only the masked low byte, which is
+    what the old `cv2.waitKey(20) & 0xFF` did and why anything but space, Enter and Esc was
+    silently ignored on the Jetson.
+    """
+    if raw is None or raw < 0:
+        return False
+    wanted = tuple(codes)
+    if letter:
+        wanted += (ord(letter.lower()), ord(letter.upper()))
+    return any(value in wanted for value in (raw, raw & 0xFF, raw & 0xFFFF))
+
+
 def wait_for_shot_in_window(video, shot: dict, remaining: int, first_of_layout: bool,
                             detect_markers: Optional[Callable], parameters: dict) -> str:
     """
@@ -777,14 +810,14 @@ def wait_for_shot_in_window(video, shot: dict, remaining: int, first_of_layout: 
                 sum(1 for marker_id in expected if marker_id in centres), len(expected), sorted(centres))
         frame_counter += 1
 
-        draw_overlay(preview, headline + [marker_line, '[space] capture   [s] skip   [q] end session'])
+        draw_overlay(preview, headline + [marker_line, '[space] capture   [tab] skip   [esc] end session'])
         cv2.imshow(WINDOW_NAME, preview)
-        key = cv2.waitKey(20) & 0xFF
-        if key in (32, 13, 10):
+        raw_key = cv2.waitKey(20)
+        if key_is(raw=raw_key, codes=CONFIRM_KEYS):
             return 'capture'
-        if key == ord('s'):
+        if key_is(raw=raw_key, codes=SKIP_KEYS, letter='s'):
             return 'skip'
-        if key in (27, ord('q')):
+        if key_is(raw=raw_key, codes=QUIT_KEYS, letter='q'):
             return 'quit'
         if window_was_closed():
             return 'quit'
@@ -814,15 +847,15 @@ def wait_for_shot_at_prompt(shot: dict, remaining: int) -> str:
 def confirm_in_window(image, lines: List[str]) -> str:
     """Show the shot just taken and ask whether to keep it."""
     preview = image.copy()
-    draw_overlay(preview, lines + ['[Enter] keep   [r] retake   [q] end session'])
+    draw_overlay(preview, lines + ['[Enter] keep   [backspace] retake   [esc] end session'])
     while True:
         cv2.imshow(WINDOW_NAME, preview)
-        key = cv2.waitKey(20) & 0xFF
-        if key in (32, 13, 10):
+        raw_key = cv2.waitKey(20)
+        if key_is(raw=raw_key, codes=CONFIRM_KEYS):
             return 'keep'
-        if key == ord('r'):
+        if key_is(raw=raw_key, codes=RETAKE_KEYS, letter='r'):
             return 'retake'
-        if key in (27, ord('q')):
+        if key_is(raw=raw_key, codes=QUIT_KEYS, letter='q'):
             return 'quit'
         if window_was_closed():
             return 'quit'
@@ -852,7 +885,9 @@ def print_session_instructions(session_folder: Path, shot_plan: List[dict], use_
     print('{} shots planned. Shots sharing a layout use the SAME cards: leave them untouched and only '
           'change the light between them.'.format(len(shot_plan)))
     if use_preview:
-        print('Aim with the preview window, then [space] to capture, [s] to skip a shot, [q] to stop.')
+        print('Aim with the preview window, then [space] to capture, [tab] to skip a shot, [esc] to '
+              'stop. The window has to be the focused one for a key to reach it, and [s], [q] and '
+              '[r] also work where the GUI build reports letter keys, which this one does not.')
     else:
         print('No preview: [Enter] captures, [s] skips a shot, [q] stops.')
     print('Before each layout, write down which cards you laid out. The script creates the file to put '
