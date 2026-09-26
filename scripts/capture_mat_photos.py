@@ -429,12 +429,31 @@ def make_marker_detector(dictionary_name: str) -> Optional[Callable]:
 
 
 def find_marker_centres(image, detect_markers: Callable) -> Dict[int, np.ndarray]:
-    """Marker id to the centre of its four corners, in pixels."""
+    """
+    Marker id to the centre of its four corners, in pixels, leaving out any id seen more than once.
+
+    Dropping a repeated id looks wasteful and is not. A card's art decodes as a valid DICT_4X4_50
+    id often enough to have appeared in every aiming run of task 0.7 (ids 17 and 37, flickering in
+    and out between frames while the mat's own four sat perfectly still, which is what a decode
+    sitting on the edge of the error correction looks like). Those phantoms are harmless while they
+    carry an id the mat does not use, and the callers only ever ask for the four it does. The case
+    that is not harmless is a phantom landing on one of those four, and keeping the last one seen
+    would then move a mat corner onto a card and quietly falsify the homography, the coverage and
+    the px/mm alike. There is no way to tell which of two identical ids is the mat's, so the honest
+    answer is that this corner was not found, which is a thing somebody notices.
+    """
     corners, ids, _ = detect_markers(image)
     centres = {}
+    seen_twice = set()
     if ids is not None:
         for marker_corners, marker_id in zip(corners, np.asarray(ids).flatten()):
-            centres[int(marker_id)] = np.asarray(marker_corners, dtype=np.float32).reshape(4, 2).mean(axis=0)
+            marker_id = int(marker_id)
+            if marker_id in centres:
+                seen_twice.add(marker_id)
+                continue
+            centres[marker_id] = np.asarray(marker_corners, dtype=np.float32).reshape(4, 2).mean(axis=0)
+    for marker_id in seen_twice:
+        del centres[marker_id]
     return centres
 
 
