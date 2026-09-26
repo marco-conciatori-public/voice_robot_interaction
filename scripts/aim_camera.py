@@ -285,7 +285,7 @@ def watch(video, detect_markers: Optional[Callable], output: str, parameters: di
             capture.draw_overlay(image=preview,
                                  lines=overlay_lines(verdict=verdict, measurements=measurements,
                                                      guidance=guidance, warnings=warnings,
-                                                     expected_count=len(expected), output=output))
+                                                     expected_marker_ids=expected, output=output))
 
             if output == 'window':
                 cv2.imshow(WINDOW_NAME, preview)
@@ -466,9 +466,10 @@ def draw_aim_marks(image, centres: Dict[int, np.ndarray], expected: Sequence, sc
 
 
 def overlay_lines(verdict: str, measurements: dict, guidance: List[str], warnings: List[str],
-                  expected_count: int, output: str) -> List[str]:
+                  expected_marker_ids: Sequence, output: str) -> List[str]:
     """The text band over the live view: the verdict, the numbers, and at most a few things to do."""
-    lines = [verdict, short_measurements(measurements=measurements, expected_count=expected_count)]
+    lines = [verdict,
+             short_measurements(measurements=measurements, expected_marker_ids=expected_marker_ids)]
     lines.extend(shorten(text=line, width=78) for line in guidance[:2])
     lines.extend('! ' + shorten(text=warning, width=76) for warning in warnings[:2])
     if output == 'window':
@@ -476,7 +477,7 @@ def overlay_lines(verdict: str, measurements: dict, guidance: List[str], warning
     return lines
 
 
-def short_measurements(measurements: dict, expected_count: int = 4) -> str:
+def short_measurements(measurements: dict, expected_marker_ids: Sequence = (0, 1, 2, 3)) -> str:
     """
     The numbers, compressed to fit the overlay.
 
@@ -485,7 +486,12 @@ def short_measurements(measurements: dict, expected_count: int = 4) -> str:
     """
     parts = []
     if measurements['markers_found'] is not None:
-        parts.append('markers {}/{}'.format(len(measurements['markers_found']), expected_count))
+        # Only the mat's own four are counted. A card's art decodes as some other valid DICT_4X4_50
+        # id often enough to have happened twice while aiming for 0.7 (ids 17 and 37), and counting
+        # those would read '4/4' while a corner of the mat was missing, which is the one moment
+        # anybody is looking at this number.
+        found = sum(1 for marker_id in expected_marker_ids if marker_id in measurements['markers_found'])
+        parts.append('markers {}/{}'.format(found, len(expected_marker_ids)))
     if measurements['mat_coverage'] is not None:
         parts.append('mat {:.0%}'.format(measurements['mat_coverage']))
     if measurements['pixels_per_millimetre_min'] is not None:
