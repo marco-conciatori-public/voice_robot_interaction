@@ -36,6 +36,10 @@ reasoning_parameters:
     - set_target only recognises a fixed list of objects (person, cat, orange) through a separate
       detector. For anything else you must guide the robot yourself using the camera.
 
+    Direct movement commands that do not depend on what the robot sees (for example "rotate 90 degrees
+    and advance for 10 seconds", "raise the arm", "open the gripper") must be executed right away,
+    without calling get_camera_image first or afterwards. Put all the function calls of such a command in
+    a single reply: they are executed in the order you give them.
     Attempt navigation-style tasks (for example "go toward the door you see") by breaking them into
     small look-and-move steps. If a task is genuinely beyond the robot (for example a precise grasp of a
     tiny object), say so briefly, and ask a short clarifying question when it would help. When you are
