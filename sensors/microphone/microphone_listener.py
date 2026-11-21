@@ -64,12 +64,13 @@ class MicrophoneListener:
                     # the safety cap already finalized this hold; wait for the release before recording again
                     continue
                 if not self.recording:
+                    # turns the LED green once per hold. It used to be set again for every frame: many I2C
+                    # writes per second, and when the LED board stops answering each write can block, so this
+                    # loop fell behind the mic stream and handled the audio minutes late, in bursts.
                     self.start_recording()
-                # Set RGB LED to green
-                self.hardware_interaction.rgb_led(red=0, green=self.led_intensity, blue=0)
                 if pcm_bytes:
                     self.current_recording.append(pcm_bytes)
-                if (time.time() - self.start_recording_timestamp) >= self.max_recording_duration:
+                if self._recorded_seconds() >= self.max_recording_duration:
                     if self.verbose >= 1:
                         print(f'Max recording duration ({self.max_recording_duration}s) reached, finalizing.')
                     self.stop_recording(save_file=self.save_file)
@@ -78,6 +79,18 @@ class MicrophoneListener:
                 self._awaiting_release = False
                 if self.recording:
                     self.stop_recording(save_file=self.save_file)
+
+    def _recorded_seconds(self) -> float:
+        """
+        Length of the audio recorded so far, computed from the received PCM, not from the clock: if this loop
+        falls behind the stream, a burst of backlogged frames would otherwise make a long hold look like an
+        accidental tap (and get it dropped).
+        """
+        if not self.current_recording:
+            return 0.0
+        bytes_per_second = (self.stream_params['sample_rate'] * self.stream_params['width']
+                            * self.stream_params['channels'])
+        return sum(len(chunk) for chunk in self.current_recording) / bytes_per_second
 
     def start_recording(self):
         """
@@ -100,7 +113,7 @@ class MicrophoneListener:
         # Set RGB LED to red
         self.hardware_interaction.rgb_led(red=self.led_intensity, green=0, blue=0)
         self.recording = False
-        recording_duration = time.time() - self.start_recording_timestamp
+        recording_duration = self._recorded_seconds()
         if self.verbose >= 3:
             print('Button released, stop recording...')
 
