@@ -105,7 +105,15 @@ class EthernetClient:
 
     def receiver(self):
         while self.socket:
-            command = protocol.recv_command(self.socket)
+            try:
+                command = protocol.recv_command(self.socket)
+            except Exception as e:
+                # e.g. connection reset by the RDK X3: close, so the sender loop ends too and start() returns
+                # (otherwise the sender would keep running on a dead socket and the client never reconnects)
+                if self.socket is not None:
+                    utils.print_exception(exception=e, message='Error in ethernet client receiver')
+                self.close()
+                break
             if command is None:
                 # the RDK X3 closed the connection (or framed an empty message)
                 self.close()
@@ -113,24 +121,30 @@ class EthernetClient:
             self._dispatch(command)
 
     def start(self):
+        """Connect, then serve the channel until the link drops. Blocks for the whole connection."""
         self.connect()
-        # Start the receiver and sender threads (the channel is full-duplex on one socket)
-        receiver_thread = threading.Thread(target=self.receiver, name='ethernet_client_receiver')
-        sender_thread = threading.Thread(target=self.sender, name='ethernet_client_sender')
+        # running only while connected, like the frame streamer
+        self.shared_variable_manager.add_to(queue_name='running_components', value='ethernet_client')
+        try:
+            # Start the receiver and sender threads (the channel is full-duplex on one socket)
+            receiver_thread = threading.Thread(target=self.receiver, name='ethernet_client_receiver')
+            sender_thread = threading.Thread(target=self.sender, name='ethernet_client_sender')
 
-        receiver_thread.start()
-        if self.verbose >= 1:
-            print(f'Receiver thread started: "{receiver_thread.name}"')
-        sender_thread.start()
-        if self.verbose >= 1:
-            print(f'Sender thread started: "{sender_thread.name}"')
+            receiver_thread.start()
+            if self.verbose >= 1:
+                print(f'Receiver thread started: "{receiver_thread.name}"')
+            sender_thread.start()
+            if self.verbose >= 1:
+                print(f'Sender thread started: "{sender_thread.name}"')
 
-        receiver_thread.join()
-        if self.verbose >= 1:
-            print('receiver thread ended.')
-        sender_thread.join()
-        if self.verbose >= 1:
-            print('sender thread ended.')
-        self.close()
+            receiver_thread.join()
+            if self.verbose >= 1:
+                print('receiver thread ended.')
+            sender_thread.join()
+            if self.verbose >= 1:
+                print('sender thread ended.')
+        finally:
+            self.shared_variable_manager.remove_from(queue_name='running_components', value='ethernet_client')
+            self.close()
         if self.verbose >= 1:
             print('Ethernet client stopped.')

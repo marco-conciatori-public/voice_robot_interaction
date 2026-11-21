@@ -145,11 +145,12 @@ def keep_restarting_ethernet_client(shared_variable_manager: SharedVariableManag
                                     command_handlers: dict = None,
                                     verbose: int = 0):
     """
-    Continuously attempts to restart the Ethernet client if it is not running.
+    Keeps the Ethernet client connected forever. EthernetClient.start() blocks for the whole connection and
+    returns when the link drops (e.g. the RDK X3 main app restarts), so this simply starts a new one each time.
+    It used to stop retrying after the first normal disconnection, leaving the command channel down (voice
+    function calls failed) until the Jetson app was restarted.
     """
-    while not shared_variable_manager.has_value(queue_name='running_components', value='ethernet_client'):
-        if verbose >= 2:
-            print('Ethernet client not running. Attempting to restart in 10 seconds...')
+    while True:
         try:
             ethernet_client = EthernetClient(
                 shared_variable_manager=shared_variable_manager,
@@ -157,10 +158,10 @@ def keep_restarting_ethernet_client(shared_variable_manager: SharedVariableManag
                 verbose=verbose,
             )
             ethernet_client.start()
-            shared_variable_manager.add_to(queue_name='running_components', value='ethernet_client')
         except Exception as e:
-            utils.print_exception(exception=e, message='Ethernet client failed. Retrying in 5 seconds...')
-            shared_variable_manager.remove_from(queue_name='running_components', value='ethernet_client')
+            utils.print_exception(exception=e, message='Ethernet client failed')
+        if verbose >= 1:
+            print('Ethernet client disconnected. Reconnecting in 5 seconds...')
         time.sleep(5)
 
 
