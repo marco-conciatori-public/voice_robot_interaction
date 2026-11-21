@@ -172,24 +172,31 @@ class GoogleAIStudioService:
             self._play_notice('reasoning_error')
             return
 
+        # Where this request starts in the transcript: if it does not reach a final answer, everything it
+        # added is dropped again (see ReasoningService.truncate_history).
+        history_start = len(self.reasoning_service.contents)
         final_text = None
         reached_final_answer = False
-        for step in range(self.max_reasoning_steps):
-            try:
-                text, function_call = self.reasoning_service.send(next_contents)
-            except Exception as e:
-                self._handle_reasoning_failure(exception=e)
-                return
-            # The call went through, so a cooldown this request had been waiting out is over for good.
-            self._play_notice(self.reasoning_guard.register_success())
-            if function_call is None:
-                # No further action requested: this is the model's final answer.
-                final_text = text
-                reached_final_answer = True
-                break
-            if self.verbose >= 1 and text:
-                print(f'(reasoning step {step}) {text}')
-            next_contents = self._execute_function_call(function_call)
+        try:
+            for step in range(self.max_reasoning_steps):
+                try:
+                    text, function_calls = self.reasoning_service.send(next_contents)
+                except Exception as e:
+                    self._handle_reasoning_failure(exception=e)
+                    return
+                # The call went through, so a cooldown this request had been waiting out is over for good.
+                self._play_notice(self.reasoning_guard.register_success())
+                if not function_calls:
+                    # No further action requested: this is the model's final answer.
+                    final_text = text
+                    reached_final_answer = True
+                    break
+                if self.verbose >= 1 and text:
+                    print(f'(reasoning step {step}) {text}')
+                next_contents = self._execute_function_calls(function_calls)
+        finally:
+            if not reached_final_answer:
+                self.reasoning_service.truncate_history(history_start)
 
         if not reached_final_answer:
             if self.verbose >= 1:
@@ -230,44 +237,50 @@ class GoogleAIStudioService:
               f'{self.reasoning_guard.remaining_cooldown():.0f} s.')
         self._play_notice(notice_key)
 
-    def _execute_function_call(self, function_call) -> list:
+    def _execute_function_calls(self, function_calls: list) -> list:
         """
-        Execute one function call and build the tool-response Content(s) to feed back to the model.
+        Execute the function calls of one model turn, in order, and build the Content(s) to feed back.
+
+        The API wants exactly one function response per call of the turn, all in the user turn that
+        follows it. Role 'user', not 'tool': the Gemini API rejects 'tool' with 400 INVALID_ARGUMENT
+        ("Role 'tool' is not supported"), which made every request fail right after its first action.
 
         get_camera_image is served locally: the fresh arm-camera frame is returned to the model as an
-        image. Every other function is a robot actuator command dispatched to the RDK X3 over the
-        command channel (fire-and-forget, no result comes back), so the model is simply told it was
-        dispatched and is expected to observe the effect with a follow-up get_camera_image.
+        image, in a separate user Content after the function responses. Every other function is a robot
+        actuator command dispatched to the RDK X3 over the command channel (fire-and-forget, no result
+        comes back), so the model is simply told it was dispatched and is expected to observe the effect
+        with a follow-up get_camera_image.
         """
-        name = function_call.name
-        args = dict(function_call.args) if function_call.args else {}
-        image_mime_type = self.reasoning_service.image_mime_type
+        response_parts = []
+        image_parts = []
+        for function_call in function_calls:
+            name = function_call.name
+            args = dict(function_call.args) if function_call.args else {}
 
-        if name == 'get_camera_image':
-            image = self.get_camera_image()
-            if image is not None:
-                return [
-                    types.Content(role='tool', parts=[
-                        types.Part.from_function_response(name=name, response={'status': 'ok'}),
-                    ]),
-                    types.Content(role='user', parts=[
-                        types.Part.from_bytes(data=image, mime_type=image_mime_type),
+            if name == 'get_camera_image':
+                image = self.get_camera_image()
+                if image is not None:
+                    response_parts.append(types.Part.from_function_response(name=name, response={'status': 'ok'}))
+                    image_parts = [
+                        types.Part.from_bytes(data=image, mime_type=self.reasoning_service.image_mime_type),
                         types.Part.from_text(text='This is the current view from the arm camera.'),
-                    ]),
-                ]
-            return [types.Content(role='tool', parts=[
-                types.Part.from_function_response(
-                    name=name,
-                    response={'status': 'error', 'message': 'No fresh camera image available.'},
-                ),
-            ])]
+                    ]
+                else:
+                    response_parts.append(types.Part.from_function_response(
+                        name=name,
+                        response={'status': 'error', 'message': 'No fresh camera image available.'},
+                    ))
+                continue
 
-        # Any other function is a robot actuator command handled on the RDK X3.
-        self.shared_variable_manager.add_to(queue_name='functions_to_call', value=function_call)
-        self._wait_for_action(args)
-        return [types.Content(role='tool', parts=[
-            types.Part.from_function_response(name=name, response={'status': 'dispatched'}),
-        ])]
+            # Any other function is a robot actuator command handled on the RDK X3.
+            self.shared_variable_manager.add_to(queue_name='functions_to_call', value=function_call)
+            self._wait_for_action(args)
+            response_parts.append(types.Part.from_function_response(name=name, response={'status': 'dispatched'}))
+
+        contents = [types.Content(role='user', parts=response_parts)]
+        if image_parts:
+            contents.append(types.Content(role='user', parts=image_parts))
+        return contents
 
     def _wait_for_action(self, args: dict) -> None:
         """Give a dispatched motion time to complete before the model observes its result."""
@@ -387,7 +400,7 @@ class GoogleAIStudioService:
         """
         The latest arm camera frame, or None if there is no usable one.
 
-        Both failure cases return None rather than raising, so _execute_function_call can report them back
+        Both failure cases return None rather than raising, so _execute_function_calls can report them back
         to the model as a tool result and let it retry:
           - No frame at all. 'latest_camera_image' stays None until the UsbCamera thread captures its first
             frame, and stays None for the whole run if the camera could not be opened. Without this check a

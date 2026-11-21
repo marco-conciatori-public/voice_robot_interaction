@@ -9,7 +9,7 @@ class ReasoningService:
     Talks to the Google AI Studio LLM for one conversation.
 
     This object only handles the model I/O: it keeps a running transcript (a list of types.Content
-    alternating user / model / tool turns) and exposes low-level primitives so a caller can drive a
+    alternating user / model turns; function results go back in user turns) and exposes low-level primitives so a caller can drive a
     multi-step "observe, act, observe again" loop. Executing the function calls (dispatching robot
     commands, capturing camera frames) is the caller's job, because that needs hardware / network
     access this class deliberately knows nothing about.
@@ -56,6 +56,14 @@ class ReasoningService:
         """Drop the transcript so the next request starts a fresh conversation."""
         self.contents = []
 
+    def truncate_history(self, length: int) -> None:
+        """
+        Cut the transcript back to its first `length` turns. Used to drop a request that did not finish:
+        left in place, it would end with a function call that never got its result, which the API rejects
+        or which the model "resumes" on the next, unrelated question.
+        """
+        del self.contents[length:]
+
     def build_user_content(self, audio_bytes: bytes = None, image_bytes: bytes = None) -> types.Content:
         """
         Wrap a raw audio or image prompt into a user-role Content ready to send.
@@ -79,9 +87,11 @@ class ReasoningService:
                 step, or the tool responses to the model's previous function call on later steps).
 
         Returns:
-            tuple (text, function_call):
-                - text (str | None): the model's textual reply, or None if it only made a function call.
-                - function_call: the function call the model requested, or None if it replied with text.
+            tuple (text, function_calls):
+                - text (str | None): the model's textual reply, or None if it only made function calls.
+                - function_calls (list): the function calls the model requested, in order, empty if it
+                  replied with text only. The model can ask for several in one turn (e.g. "rotate, then
+                  advance"), and the API then expects one function response for each of them.
             The model's reply is appended to the transcript so the next send() continues the exchange.
 
         Raises:
@@ -103,16 +113,16 @@ class ReasoningService:
             self.contents.append(candidate.content)
 
             text = None
-            function_call = None
+            function_calls = []
             for part in candidate.content.parts:
                 if part.text:
                     text = part.text
                 elif part.function_call:
-                    function_call = part.function_call
+                    function_calls.append(part.function_call)
                 else:
                     warnings.warn(f'Unexpected part type in response:\n\t{part}')
 
-            return text, function_call
+            return text, function_calls
 
         except Exception:
             # Roll back the half-finished turn so a later request does not inherit a dangling input,
